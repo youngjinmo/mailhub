@@ -1,0 +1,56 @@
+# IDE
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+.DS_Store
+
+# Backend - Gradle
+back-end/.gradle/
+back-end/build/
+back-end/out/
+back-end/bin/
+back-end/.gradletasknamecache
+
+# Backend - Application
+back-end/application.properties
+back-end/application-*.properties
+!back-end/application.properties.example
+
+# Frontend - Node
+front-end/node_modules/
+front-end/dist/
+front-end/.nuxt/
+front-end/.output/
+front-end/.cache/
+
+# Frontend - Environment
+front-end/.env
+front-end/.env.local
+front-end/.env.*.local
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test
+coverage/
+*.coverage
+.nyc_output/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
