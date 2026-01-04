@@ -1,6 +1,6 @@
 package com.emailrelay.service;
 
-import com.emailrelay.exception.CustomException;
+import com.emailrelay.exception.CustomException.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,16 +20,23 @@ public class SendEmailService {
 
     public void sendVerificationCode(String to, String code) {
         try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setTo(to);
-            message.setSubject("[" + serviceName + "] Verification Code");
-            message.setText(buildVerificationEmailBody(code));
-
-            mailSender.send(message);
+            String title = "[" + serviceName + "] Verification Code";
+            sendEmail(to, title, buildVerificationEmailBody(code));
             log.info("Verification email sent to: {}", to);
         } catch (Exception e) {
             log.error("Failed to send verification email to: {}", to, e);
-            throw new CustomException.EmailSendException(e.getMessage());
+            throw new EmailSendException(e.getMessage());
+        }
+    }
+
+    public void sendWelcomeEmail(String to) {
+        try {
+            String title = "[" + serviceName + "] Welcome to Email";
+            sendEmail(to, title, buildWelcomeEmailBody());
+            log.info("Welcome email sent to: {}", to);
+        } catch (Exception e) {
+            log.error("Failed to send welcome email to: {}", to, e);
+            throw new EmailSendException(e.getMessage());
         }
     }
 
@@ -47,7 +54,7 @@ public class SendEmailService {
             log.info("Email sent to: {} with title: {}", to, title);
         } catch (Exception e) {
             log.error("Failed to send email to: {}", to, e);
-            throw new CustomException.EmailSendException(e.getMessage());
+            throw new EmailSendException(e.getMessage());
         }
     }
 
@@ -70,5 +77,20 @@ public class SendEmailService {
                 If you didn't request this code, please ignore this email.
 
                 """, code);
+    }
+
+    private String buildWelcomeEmailBody() {
+        return String.format("""
+                Welcome! 👋
+                
+                Thanks for signing up.
+                
+                You can now create private email addresses and safely receive forwarded emails—keeping your real inbox protected from spam and unwanted tracking.
+                
+                If you have any questions or feedback, we’re always here to help.
+                
+                Welcome aboard,
+                Email Digest Team.
+                """);
     }
 }

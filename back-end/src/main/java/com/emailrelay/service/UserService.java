@@ -18,6 +18,7 @@ public class UserService {
 
     private final TokenService tokenService;
     private final AuthService authService;
+    private final SendEmailService sendEmailService;
     private final UserRepository userRepository;
 
 
@@ -60,6 +61,7 @@ public class UserService {
 
         User savedUser = userRepository.save(user);
         log.info("Created email user: {}", username);
+        sendEmailService.sendWelcomeEmail(username);
         return savedUser;
     }
 
