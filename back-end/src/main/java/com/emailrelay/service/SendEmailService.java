@@ -1,11 +1,12 @@
 package com.emailrelay.service;
 
 import com.emailrelay.exception.CustomException.*;
+import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -45,12 +46,13 @@ public class SendEmailService {
      */
     public void sendEmail(String to, String title, String content) {
         try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setTo(to);
-            message.setSubject(title);
-            message.setText(content);
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "UTF-8");
+            helper.setTo(to);
+            helper.setSubject(title);
+            helper.setText(content, true);
 
-            mailSender.send(message);
+            mailSender.send(mimeMessage);
             log.info("Email sent to: {} with title: {}", to, title);
         } catch (Exception e) {
             log.error("Failed to send email to: {}", to, e);
@@ -68,29 +70,35 @@ public class SendEmailService {
 
     private String buildVerificationEmailBody(String code) {
         return String.format("""
-                Email Relay Verification Code
-
-                %s
-
-                This code will expire in 5 minutes.
-
-                If you didn't request this code, please ignore this email.
-
-                """, code);
+               <html>
+               <body style="font-family: Arial, sans-serif;">
+               <p>Email Relay Verification Code</p>
+               <div style="font-size: 20px; font-weight: bold; letter-spacing: 2px; color: #333;">
+               %s
+               </div>
+               <p>This code will expire in 5 minutes.</p>
+               <p style="color: #666;">If you didn't request this code, please ignore this email.</p>
+               <p style="margin-top: 20px;">Welcome aboard,<br>Email Digest Team.</p>
+               </body>
+               </html>
+               """, code);
     }
 
     private String buildWelcomeEmailBody() {
         return String.format("""
-                Welcome! 👋
-                
-                Thanks for signing up.
-                
-                You can now create private email addresses and safely receive forwarded emails—keeping your real inbox protected from spam and unwanted tracking.
-                
-                If you have any questions or feedback, we’re always here to help.
-                
-                Welcome aboard,
-                Email Digest Team.
-                """);
+            <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <p style="font-size: 18px;">Welcome! 👋</p>
+            
+            <p>Thanks for signing up.</p>
+            
+            <p>You can now create private email addresses and safely receive forwarded emails—keeping your real inbox protected from spam and unwanted tracking.</p>
+            
+            <p>If you have any questions or feedback, we're always here to help.</p>
+            
+            <p style="margin-top: 20px;">Welcome aboard,<br>Email Digest Team.</p>
+            </body>
+            </html>
+            """);
     }
 }
