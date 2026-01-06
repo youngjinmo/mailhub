@@ -2,6 +2,14 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 /**
+ * API Response wrapper interface
+ */
+interface ApiResponse<T> {
+  result: 'success' | 'fail';
+  data: T;
+}
+
+/**
  * Send verification code to the user's email
  * @param email - User's email address
  */
@@ -13,9 +21,14 @@ export async function sendVerificationCode(email: string): Promise<void> {
     },
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(errorText || 'Failed to send verification code');
+  const apiResponse: ApiResponse<void> = await response.json();
+
+  if (!response.ok || apiResponse.result === 'fail') {
+    throw new Error(
+      typeof apiResponse.data === 'string'
+        ? apiResponse.data
+        : 'Failed to send verification code'
+    );
   }
 }
 
@@ -33,10 +46,15 @@ export async function verifyCode(email: string, code: string): Promise<boolean> 
     },
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(errorText || 'Failed to verify code');
+  const apiResponse: ApiResponse<boolean> = await response.json();
+
+  if (!response.ok || apiResponse.result === 'fail') {
+    throw new Error(
+      typeof apiResponse.data === 'string'
+        ? apiResponse.data
+        : 'Failed to verify code'
+    );
   }
 
-  return await response.json();
+  return apiResponse.data;
 }

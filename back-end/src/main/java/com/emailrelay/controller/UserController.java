@@ -1,5 +1,6 @@
 package com.emailrelay.controller;
 
+import com.emailrelay.dto.ApiResponse;
 import com.emailrelay.service.AuthService;
 import com.emailrelay.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -21,10 +22,10 @@ public class UserController {
      * Check if username exists
      */
     @GetMapping("/exists/{username}")
-    public ResponseEntity<Boolean> checkUsernameExists(@PathVariable String username) {
+    public ResponseEntity<ApiResponse<Boolean>> checkUsernameExists(@PathVariable String username) {
         boolean exists = userService.existsByUsername(username);
 
-        return ResponseEntity.ok(exists);
+        return ResponseEntity.ok(ApiResponse.success(exists));
     }
 
     /**
@@ -33,9 +34,9 @@ public class UserController {
      * @return
      */
     @PostMapping("/send-verification-code")
-    public ResponseEntity<Void> sendVerificationCode(@RequestParam String username) {
+    public ResponseEntity<ApiResponse<Void>> sendVerificationCode(@RequestParam String username) {
         authService.sendVerificationCode(username);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(ApiResponse.success());
     }
 
     /**
@@ -45,24 +46,24 @@ public class UserController {
      * @return
      */
     @PostMapping("/verify-code")
-    public ResponseEntity<Boolean> verifyCode(@RequestParam String username, @RequestParam String code) {
+    public ResponseEntity<ApiResponse<Boolean>> verifyCode(@RequestParam String username, @RequestParam String code) {
         if (!userService.existsByUsername(username)) {
            userService.createEmailUser(username);
         }
         Boolean result = authService.verifyCode(username, code);
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     /**
      * Delete current user account (withdrawal)
      */
     @DeleteMapping("/me")
-    public ResponseEntity<Void> deleteUser(Authentication authentication) {
+    public ResponseEntity<ApiResponse<Void>> deleteUser(Authentication authentication) {
         Long userId = (Long) authentication.getPrincipal();
         userService.deleteUser(userId);
 
         log.info("User deleted: {}", userId);
 
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(ApiResponse.success());
     }
 }

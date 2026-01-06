@@ -1,5 +1,6 @@
 package com.emailrelay.exception;
 
+import com.emailrelay.dto.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,15 +17,15 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(CustomException.class)
-    public ResponseEntity<String> handleCustomException(CustomException ex) {
+    public ResponseEntity<ApiResponse<String>> handleCustomException(CustomException ex) {
         log.error("Custom exception occurred: {}", ex.getMessage());
         return ResponseEntity
                 .status(ex.getStatus())
-                .body(ex.getMessage());
+                .body(ApiResponse.fail(ex.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, String>> handleValidationException(
+    public ResponseEntity<ApiResponse<Map<String, String>>> handleValidationException(
             MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach(error -> {
@@ -35,14 +36,14 @@ public class GlobalExceptionHandler {
         log.error("Validation failed: {}", errors);
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .body(errors);
+                .body(ApiResponse.fail(errors));
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<String> handleGenericException(Exception ex) {
+    public ResponseEntity<ApiResponse<String>> handleGenericException(Exception ex) {
         log.error("Unexpected error occurred", ex);
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("An unexpected error occurred");
+                .body(ApiResponse.fail("An unexpected error occurred"));
     }
 }

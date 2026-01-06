@@ -1,5 +1,6 @@
 package com.emailrelay.controller;
 
+import com.emailrelay.dto.ApiResponse;
 import com.emailrelay.service.EmailRelayService;
 import com.emailrelay.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -17,20 +18,20 @@ public class RelayEmailController {
     private final UserService userService;
 
     @PostMapping("/create")
-    public ResponseEntity<String> createRelayEmail(String primaryEmail) {
+    public ResponseEntity<ApiResponse<String>> createRelayEmail(String primaryEmail) {
         String relayEmail = emailRelayService.generateRelayEmailAddress(primaryEmail);
-        return ResponseEntity.ok(relayEmail);
+        return ResponseEntity.ok(ApiResponse.success(relayEmail));
     }
 
     @GetMapping("/find-primary-email")
-    public ResponseEntity<String> findPrimaryEmail(@RequestParam String relayEmail) {
+    public ResponseEntity<ApiResponse<String>> findPrimaryEmail(@RequestParam String relayEmail) {
         String primaryEmail = emailRelayService.findPrimaryEmailByRelayEmail(relayEmail);
-        return ResponseEntity.ok(primaryEmail);
+        return ResponseEntity.ok(ApiResponse.success(primaryEmail));
     }
 
     @PostMapping("/forward")
-    public ResponseEntity<Void> forwardEmail(@RequestParam String relayEmail) {
+    public ResponseEntity<ApiResponse<Void>> forwardEmail(@RequestParam String relayEmail) {
         emailRelayService.forwardEmail(relayEmail);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(ApiResponse.success());
     }
 }
