@@ -20,10 +20,10 @@ public class TokenService {
     @Value("${jwt.secret}")
     private String secret;
 
-    @Value("${jwt.access-token-expiration}")
+    @Value("${jwt.access-token.expiration}")
     private Long accessTokenExpiration;
 
-    @Value("${jwt.refresh-token-expiration}")
+    @Value("${jwt.refresh-token.expiration}")
     private Long refreshTokenExpiration;
 
     private SecretKey secretKey;

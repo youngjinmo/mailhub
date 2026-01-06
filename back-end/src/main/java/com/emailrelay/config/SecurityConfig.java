@@ -31,15 +31,11 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/api/auth/signup/**",
-                                "/api/auth/login/**",
+                                "/api/auth/send-verification-code",
+                                "/api/auth/login",
                                 "/api/auth/refresh",
-                                "/api/webhook/**"
-                        ).permitAll()
-                        .requestMatchers(
                                 "/api/users/exists/**",
-                                "/api/users/send-verification-code",
-                                "/api/users/verify-code"
+                                "/api/webhook/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

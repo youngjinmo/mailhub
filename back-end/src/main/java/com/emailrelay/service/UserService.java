@@ -1,11 +1,13 @@
 package com.emailrelay.service;
 
+import com.emailrelay.dto.AuthToken;
 import com.emailrelay.exception.CustomException.*;
 import com.emailrelay.model.User;
 import com.emailrelay.repository.UserRepository;
 import com.emailrelay.security.TokenService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -66,9 +68,13 @@ public class UserService {
     }
 
     @Transactional
-    public String login(String username) {
+    public AuthToken login(String username) {
         Long userId = userRepository.findByUsername(username).get().getId();
-        return tokenService.generateAccessToken(userId, username);
+        AuthToken authToken = authService.generateTokens(userId, username);
+
+        // Store refresh token in Redis
+        authService.storeRefreshToken(userId, authToken.refreshToken());
+        return authToken;
     }
 
     @Transactional

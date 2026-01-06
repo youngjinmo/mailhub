@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import EmailInput from "@/components/EmailInput";
 import VerificationInput from "@/components/VerificationInput";
 import RelayEmailDashboard from "@/components/RelayEmailDashboard";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Mail } from "lucide-react";
-import { sendVerificationCode, verifyCode } from "@/lib/api";
+import { sendVerificationCode, login, logout, checkAuth, getUsernameFromToken } from "@/lib/api";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,14 +44,8 @@ const Index = () => {
     setIsLoading(true);
 
     try {
-      const isValid = await verifyCode(userEmail, code);
-
-      if (isValid) {
-        setAuthStep("loggedIn");
-      } else {
-        setErrorMessage("Verification code does not match. Please try again.");
-        setShowErrorDialog(true);
-      }
+      await login(userEmail, code);
+      setAuthStep("loggedIn");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to verify code");
       setShowErrorDialog(true);
@@ -65,10 +59,27 @@ const Index = () => {
     setUserEmail("");
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logout();
     setAuthStep("email");
     setUserEmail("");
   };
+
+  // Check authentication status on component mount
+  useEffect(() => {
+    const initAuth = async () => {
+      const isAuthenticated = await checkAuth();
+      if (isAuthenticated) {
+        const username = getUsernameFromToken();
+        if (username) {
+          setUserEmail(username);
+          setAuthStep("loggedIn");
+        }
+      }
+    };
+
+    initAuth();
+  }, []);
 
   if (authStep === "loggedIn") {
     return <RelayEmailDashboard userEmail={userEmail} onLogout={handleLogout} />;
