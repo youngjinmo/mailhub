@@ -80,4 +80,10 @@ public class CustomException extends RuntimeException {
             super("Unknown server error: " + message, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
+    public static class EmailForwardException extends CustomException {
+        public EmailForwardException(String message) {
+            super("Failed to forward email: " + message, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
 }

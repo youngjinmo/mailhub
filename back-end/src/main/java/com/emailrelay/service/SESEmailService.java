@@ -1,5 +1,6 @@
 package com.emailrelay.service;
 
+import com.emailrelay.dto.ParsedEmail;
 import com.emailrelay.exception.CustomException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -145,6 +146,70 @@ public class SESEmailService {
             throw new CustomException.EmailSendException("SES error: " + e.awsErrorDetails().errorMessage());
         } catch (Exception e) {
             log.error("Failed to send mixed email via SES", e);
+            throw new CustomException.EmailSendException(e.getMessage());
+        }
+    }
+
+    /**
+     * Forward parsed email to target address
+     * Preserves original subject and body content
+     */
+    public void forwardParsedEmail(String toAddress, ParsedEmail parsedEmail) {
+        try {
+            // Preserve original subject
+            String subject = parsedEmail.getSubject() != null ? parsedEmail.getSubject() : "(No Subject)";
+
+            // Build body based on available content
+            Body.Builder bodyBuilder = Body.builder();
+
+            if (parsedEmail.getTextBody() != null && !parsedEmail.getTextBody().isBlank()) {
+                bodyBuilder.text(Content.builder()
+                        .charset("UTF-8")
+                        .data(parsedEmail.getTextBody())
+                        .build());
+            }
+
+            if (parsedEmail.getHtmlBody() != null && !parsedEmail.getHtmlBody().isBlank()) {
+                bodyBuilder.html(Content.builder()
+                        .charset("UTF-8")
+                        .data(parsedEmail.getHtmlBody())
+                        .build());
+            }
+
+            // Fallback to text if no body available
+            if (parsedEmail.getTextBody() == null && parsedEmail.getHtmlBody() == null) {
+                bodyBuilder.text(Content.builder()
+                        .charset("UTF-8")
+                        .data("(Empty email content)")
+                        .build());
+            }
+
+            SendEmailRequest request = SendEmailRequest.builder()
+                    .source(fromEmail)
+                    .destination(Destination.builder()
+                            .toAddresses(toAddress)
+                            .build())
+                    .message(Message.builder()
+                            .subject(Content.builder()
+                                    .charset("UTF-8")
+                                    .data(subject)
+                                    .build())
+                            .body(bodyBuilder.build())
+                            .build())
+                    .build();
+
+            SendEmailResponse response = sesClient.sendEmail(request);
+
+            log.info("Forwarded email via SES. To: {}, Original From: {}, MessageId: {}",
+                    toAddress, parsedEmail.getFrom(), response.messageId());
+
+        } catch (SesException e) {
+            log.error("Failed to forward email via SES. To: {}, From: {}",
+                    toAddress, parsedEmail.getFrom(), e);
+            throw new CustomException.EmailSendException("SES error: " + e.awsErrorDetails().errorMessage());
+        } catch (Exception e) {
+            log.error("Failed to forward email via SES. To: {}, From: {}",
+                    toAddress, parsedEmail.getFrom(), e);
             throw new CustomException.EmailSendException(e.getMessage());
         }
     }

@@ -12,13 +12,13 @@ import software.amazon.awssdk.services.ses.SesClient;
 @Configuration
 public class AwsConfig {
 
-    @Value("${aws.access-key-id}")
+    @Value("${spring.cloud.aws.credentials.access-key}")
     private String accessKeyId;
 
-    @Value("${aws.secret-access-key}")
+    @Value("${spring.cloud.aws.credentials.secret-key}")
     private String secretAccessKey;
 
-    @Value("${aws.region}")
+    @Value("${spring.cloud.aws.region.static}")
     private String region;
 
     @Bean

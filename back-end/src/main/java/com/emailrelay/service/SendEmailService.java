@@ -1,12 +1,9 @@
 package com.emailrelay.service;
 
 import com.emailrelay.exception.CustomException.*;
-import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -14,7 +11,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class SendEmailService {
 
-    private final JavaMailSender mailSender;
+    private final SESEmailService sesEmailService;
 
     @Value("${spring.application.name}")
     private String serviceName;
@@ -46,13 +43,7 @@ public class SendEmailService {
      */
     public void sendEmail(String to, String title, String content) {
         try {
-            MimeMessage mimeMessage = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, "UTF-8");
-            helper.setTo(to);
-            helper.setSubject(title);
-            helper.setText(content, true);
-
-            mailSender.send(mimeMessage);
+            sesEmailService.sendHtmlEmail(to, title, content);
             log.info("Email sent to: {} with title: {}", to, title);
         } catch (Exception e) {
             log.error("Failed to send email to: {}", to, e);

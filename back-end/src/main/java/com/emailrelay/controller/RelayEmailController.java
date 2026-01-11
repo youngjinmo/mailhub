@@ -28,10 +28,4 @@ public class RelayEmailController {
         String primaryEmail = emailRelayService.findPrimaryEmailByRelayEmail(relayEmail);
         return ResponseEntity.ok(ApiResponse.success(primaryEmail));
     }
-
-    @PostMapping("/forward")
-    public ResponseEntity<ApiResponse<Void>> forwardEmail(@RequestParam String relayEmail) {
-        emailRelayService.forwardEmail(relayEmail);
-        return ResponseEntity.ok(ApiResponse.success());
-    }
 }

@@ -66,3 +66,6 @@ coverage/
 *.db
 *.sqlite
 *.sqlite3
+
+# AWS
+*.pem

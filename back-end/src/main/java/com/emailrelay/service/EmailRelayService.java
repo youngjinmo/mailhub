@@ -1,5 +1,6 @@
 package com.emailrelay.service;
 
+import com.emailrelay.dto.ParsedEmail;
 import com.emailrelay.exception.CustomException.*;
 import com.emailrelay.model.RelayEmail;
 import com.emailrelay.repository.RelayEmailRepository;
@@ -22,6 +23,8 @@ public class EmailRelayService {
 
     private final CacheService cacheService;
     private final RelayEmailRepository relayEmailRepository;
+    private final S3EmailService s3EmailService;
+    private final SESEmailService sesEmailService;
 
     @Transactional
     public String generateRelayEmailAddress(String primaryEmail) {
@@ -47,7 +50,39 @@ public class EmailRelayService {
         return entity.getPrimaryEmail();
     }
 
-    public void forwardEmail(String relayEmail) {
-        String primaryEmail = findPrimaryEmailByRelayEmail(relayEmail);
+    /**
+     * Forward email from S3 to primary email address
+     * @param s3Key S3 object key where the email is stored
+     */
+    public void forwardEmail(String s3Key) {
+        try {
+            log.info("Starting email forwarding process for S3 key: {}", s3Key);
+
+            // 1. Fetch and parse email from S3
+            ParsedEmail parsedEmail = s3EmailService.fetchAndParseEmail(s3Key);
+            log.info("Email parsed. From: {}, To: {}, Subject: {}",
+                    parsedEmail.getFrom(), parsedEmail.getTo(), parsedEmail.getSubject());
+
+            // 2. Extract relay email address (recipient)
+            if (parsedEmail.getTo() == null || parsedEmail.getTo().isEmpty()) {
+                log.error("No recipient found in parsed email");
+                throw new EmailForwardException("No recipient found in email");
+            }
+
+            String relayEmail = parsedEmail.getTo().get(0);
+            parsedEmail.setOriginalRecipient(relayEmail);
+
+            // 3. Find primary email address mapped to relay address
+            String primaryEmail = findPrimaryEmailByRelayEmail(relayEmail);
+            log.info("Found primary email: {} for relay email: {}", primaryEmail, relayEmail);
+
+            // 4. Forward email to primary address via SES
+            sesEmailService.forwardParsedEmail(primaryEmail, parsedEmail);
+            log.info("Email successfully forwarded from {} to {}", relayEmail, primaryEmail);
+
+        } catch (Exception e) {
+            log.error("Failed to forward email for S3 key: {}", s3Key, e);
+            throw new EmailForwardException("Email forwarding failed: " + e.getMessage());
+        }
     }
 }
