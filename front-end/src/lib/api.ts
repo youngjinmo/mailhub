@@ -10,23 +10,27 @@ interface ApiResponse<T> {
 }
 
 /**
- * In-memory access token storage
- * This will be cleared when the tab is closed or page is refreshed
+ * SessionStorage key for access token
+ * Token will persist through page refreshes but cleared when tab is closed
  */
-let accessToken: string | null = null;
+const ACCESS_TOKEN_KEY = 'accessToken';
 
 /**
- * Set the access token in memory
+ * Set the access token in sessionStorage
  */
 export function setAccessToken(token: string | null): void {
-  accessToken = token;
+  if (token) {
+    sessionStorage.setItem(ACCESS_TOKEN_KEY, token);
+  } else {
+    sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+  }
 }
 
 /**
- * Get the current access token from memory
+ * Get the current access token from sessionStorage
  */
 export function getAccessToken(): string | null {
-  return accessToken;
+  return sessionStorage.getItem(ACCESS_TOKEN_KEY);
 }
 
 /**
@@ -52,48 +56,24 @@ function decodeJWT(token: string): any {
  * Get username from access token
  */
 export function getUsernameFromToken(): string | null {
-  if (!accessToken) return null;
-  const payload = decodeJWT(accessToken);
+  const token = getAccessToken();
+  if (!token) return null;
+  const payload = decodeJWT(token);
   return payload?.username || null;
 }
 
 /**
- * Clear the access token from memory
+ * Clear the access token from sessionStorage
  */
 export function clearAccessToken(): void {
-  accessToken = null;
+  sessionStorage.removeItem(ACCESS_TOKEN_KEY);
 }
 
-/**
- * Refresh the access token using the refresh token from HTTP-only cookie
- * @returns New access token
- */
-export async function refreshToken(): Promise<string> {
-  const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
-    method: 'POST',
-    credentials: 'include', // Include HTTP-only cookies
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
-
-  const apiResponse: ApiResponse<string> = await response.json();
-
-  if (!response.ok || apiResponse.result === 'fail') {
-    throw new Error(
-      typeof apiResponse.data === 'string'
-        ? apiResponse.data
-        : 'Failed to refresh token'
-    );
-  }
-
-  const newAccessToken = apiResponse.data;
-  setAccessToken(newAccessToken);
-  return newAccessToken;
-}
 
 /**
  * Make an authenticated API request with automatic token refresh
+ * The backend JwtAuthGuard automatically refreshes expired access tokens
+ * and returns the new token in the X-New-Access-Token response header
  */
 async function authenticatedFetch(
   url: string,
@@ -101,33 +81,26 @@ async function authenticatedFetch(
 ): Promise<Response> {
   // Add authorization header if access token exists
   const headers = new Headers(options.headers);
-  if (accessToken) {
-    headers.set('Authorization', `Bearer ${accessToken}`);
+  const token = getAccessToken();
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
   }
 
-  let response = await fetch(url, {
+  const response = await fetch(url, {
     ...options,
     headers,
     credentials: 'include', // Include HTTP-only cookies
   });
 
-  // If unauthorized and we haven't tried to refresh yet, try refreshing the token
-  if (response.status === 401) {
-    try {
-      await refreshToken();
+  // Check if backend refreshed the access token
+  const newAccessToken = response.headers.get('X-New-Access-Token');
+  if (newAccessToken) {
+    setAccessToken(newAccessToken);
+  }
 
-      // Retry the request with the new token
-      headers.set('Authorization', `Bearer ${accessToken}`);
-      response = await fetch(url, {
-        ...options,
-        headers,
-        credentials: 'include',
-      });
-    } catch (error) {
-      // Refresh failed, clear token and propagate error
-      clearAccessToken();
-      throw error;
-    }
+  // If still unauthorized after potential refresh, clear token
+  if (response.status === 401) {
+    clearAccessToken();
   }
 
   return response;
@@ -135,14 +108,15 @@ async function authenticatedFetch(
 
 /**
  * Send verification code to the user's email
- * @param email - User's email address
+ * @param username - User's email address
  */
-export async function sendVerificationCode(email: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/auth/send-verification-code?username=${encodeURIComponent(email)}`, {
+export async function sendVerificationCode(username: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/auth/send-verification-code`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
+    body: JSON.stringify({ username }),
   });
 
   const apiResponse: ApiResponse<void> = await response.json();
@@ -158,20 +132,21 @@ export async function sendVerificationCode(email: string): Promise<void> {
 
 /**
  * Login with verification code
- * @param email - User's email address
+ * @param username - User's email address
  * @param code - Verification code
  * @returns Access token
  */
-export async function login(email: string, code: string): Promise<string> {
-  const response = await fetch(`${API_BASE_URL}/api/auth/login?username=${encodeURIComponent(email)}&code=${encodeURIComponent(code)}`, {
+export async function login(username: string, code: string): Promise<string> {
+  const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
     method: 'POST',
     credentials: 'include', // Include cookies for refresh token
     headers: {
       'Content-Type': 'application/json',
     },
+    body: JSON.stringify({ username, code }),
   });
 
-  const apiResponse: ApiResponse<string> = await response.json();
+  const apiResponse: ApiResponse<{ accessToken: string }> = await response.json();
 
   if (!response.ok || apiResponse.result === 'fail') {
     throw new Error(
@@ -181,10 +156,11 @@ export async function login(email: string, code: string): Promise<string> {
     );
   }
 
-  // Store access token in memory
-  const token = apiResponse.data;
-  setAccessToken(token);
-  return token;
+  // Store access token in sessionStorage
+  const { accessToken } = apiResponse.data;
+
+  setAccessToken(accessToken);
+  return accessToken;
 }
 
 /**
@@ -198,8 +174,9 @@ export async function logout(): Promise<void> {
     };
 
     // Include access token in Authorization header for authentication
-    if (accessToken) {
-      headers['Authorization'] = `Bearer ${accessToken}`;
+    const token = getAccessToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
 
     await fetch(`${API_BASE_URL}/api/auth/logout`, {
@@ -211,24 +188,16 @@ export async function logout(): Promise<void> {
     // Ignore errors during logout
     console.error('Logout error:', error);
   } finally {
-    // Always clear access token from memory
+    // Always clear access token from sessionStorage
     clearAccessToken();
   }
 }
 
 /**
  * Check if user is authenticated
- * Tries to refresh token if access token is not available
+ * Returns true if access token exists in sessionStorage
+ * Note: Token will be automatically refreshed by backend guard on actual API calls
  */
-export async function checkAuth(): Promise<boolean> {
-  if (accessToken) {
-    return true;
-  }
-
-  try {
-    await refreshToken();
-    return true;
-  } catch {
-    return false;
-  }
+export function checkAuth(): boolean {
+  return getAccessToken() !== null;
 }

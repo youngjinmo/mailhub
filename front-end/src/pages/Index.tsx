@@ -67,8 +67,8 @@ const Index = () => {
 
   // Check authentication status on component mount
   useEffect(() => {
-    const initAuth = async () => {
-      const isAuthenticated = await checkAuth();
+    const initAuth = () => {
+      const isAuthenticated = checkAuth();
       if (isAuthenticated) {
         const username = getUsernameFromToken();
         if (username) {

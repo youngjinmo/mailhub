@@ -1,230 +1,98 @@
-# Email Relay Backend
+<p align="center">
+  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
+</p>
 
-Spring Boot backend for Email Relay service with passwordless authentication and OAuth support.
+[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
+[circleci-url]: https://circleci.com/gh/nestjs/nest
 
-## Features
+  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
+    <p align="center">
+<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
+<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
+<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
+<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
+<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
+<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
+<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
+  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
+    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
+  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
+</p>
+  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
+  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
-- Passwordless authentication (email verification code)
-- OAuth 2.0 login (Google, Apple, Kakao)
-- JWT-based authentication
-- Account management (signup, login, withdrawal)
-- Redis-based verification code storage
-- Comprehensive unit tests
+## Description
 
-## Tech Stack
+[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
-- Java 17
-- Spring Boot 3.2.1
-- Spring Security
-- Spring Data JPA
-- PostgreSQL
-- Redis
-- JWT (io.jsonwebtoken)
-- JUnit 5 + Mockito
-
-## Service Flow
-
-
-1. AWS SES: receive mail -> stored it into S3, publish message(S3 bucket name, object key(file route)) into AWS SQS
-
-2. AWS S3: stored mail content.
-
-3. AWS SQS: stored S3 bucket name and file routes(object key)
-
-4. SpringBoot Server
-
-    - Get S3 bucket name and file route from SQS by listening
-
-    - Get mail content from AWS S3.
-
-    - Summarize mail body by AI
-
-    - Send mail to primary email by AWS SES sdk.
-
-5. AWS SES: Send mail to primary email
-
-
-## Setup
-
-### 1. Database Setup
-
-Create PostgreSQL database:
-
-```sql
-CREATE DATABASE email_relay;
-```
-
-### 2. Redis Setup
-
-Start Redis server:
+## Project setup
 
 ```bash
-redis-server
+$ npm install
 ```
 
-### 3. Configure Application
-
-Update `src/main/resources/application.properties` with your settings:
-
-```properties
-# Database
-spring.datasource.url=jdbc:postgresql://localhost:5432/email_relay
-spring.datasource.username=your_username
-spring.datasource.password=your_password
-
-# Email (Gmail example)
-spring.mail.username=your-email@gmail.com
-spring.mail.password=your-app-password
-
-# OAuth2 credentials
-spring.security.oauth2.client.registration.google.client-id=your-google-client-id
-spring.security.oauth2.client.registration.google.client-secret=your-google-client-secret
-
-spring.security.oauth2.client.registration.kakao.client-id=your-kakao-client-id
-spring.security.oauth2.client.registration.kakao.client-secret=your-kakao-client-secret
-
-spring.security.oauth2.client.registration.apple.client-id=your-apple-client-id
-spring.security.oauth2.client.registration.apple.client-secret=your-apple-client-secret
-
-# JWT Secret (use a strong random string)
-jwt.secret=your-256-bit-secret-key
-```
-
-### 4. Build and Run
+## Compile and run the project
 
 ```bash
-# Build
-./gradlew build
+# development
+$ npm run start
 
-# Run
-./gradlew bootRun
+# watch mode
+$ npm run start:dev
 
-# Run tests
-./gradlew test
+# production mode
+$ npm run start:prod
 ```
 
-## API Endpoints
-
-### Authentication
-
-#### Signup
-
-1. **Request verification code**
-   ```
-   POST /api/auth/signup/request
-   Content-Type: application/json
-
-   {
-     "email": "user@example.com"
-   }
-   ```
-
-2. **Verify code and create account**
-   ```
-   POST /api/auth/signup/verify
-   Content-Type: application/json
-
-   {
-     "email": "user@example.com",
-     "code": "123456",
-     "username": "username"
-   }
-   ```
-
-#### Login
-
-1. **Request verification code**
-   ```
-   POST /api/auth/login/request
-   Content-Type: application/json
-
-   {
-     "email": "user@example.com"
-   }
-   ```
-
-2. **Verify code and login**
-   ```
-   POST /api/auth/login/verify
-   Content-Type: application/json
-
-   {
-     "email": "user@example.com",
-     "code": "123456"
-   }
-   ```
-
-#### OAuth Login
-
-```
-GET /api/auth/oauth2/authorize/{provider}
-```
-
-Where provider is: `google`, `kakao`, or `apple`
-
-#### Refresh Token
-
-```
-POST /api/auth/refresh
-Content-Type: application/json
-
-{
-  "refreshToken": "your-refresh-token"
-}
-```
-
-### User Management
-
-#### Delete Account
-
-```
-DELETE /api/users/me
-Authorization: Bearer {access-token}
-```
-
-## Project Structure
-
-```
-src/
-├── main/
-│   ├── java/com/emailrelay/
-│   │   ├── config/           # Configuration classes
-│   │   ├── controller/       # REST controllers
-│   │   ├── dto/              # Data Transfer Objects
-│   │   ├── exception/        # Custom exceptions
-│   │   ├── model/            # JPA entities
-│   │   ├── repository/       # JPA repositories
-│   │   ├── security/         # Security & JWT
-│   │   └── service/          # Business logic
-│   └── resources/
-│       └── application.properties
-└── test/
-    └── java/com/emailrelay/  # Unit tests
-```
-
-## Testing
-
-Run all tests:
+## Run tests
 
 ```bash
-./gradlew test
+# unit tests
+$ npm run test
+
+# e2e tests
+$ npm run test:e2e
+
+# test coverage
+$ npm run test:cov
 ```
 
-Run with coverage:
+## Deployment
+
+When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+
+If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
 
 ```bash
-./gradlew test jacocoTestReport
+$ npm install -g @nestjs/mau
+$ mau deploy
 ```
 
-## Security Features
+With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
 
-- JWT-based authentication
-- Verification code: 6 digits, 5-minute expiration
-- Rate limiting: 1 code per minute per email
-- Max 3 verification attempts per code
-- Soft delete for user accounts (30-day retention)
-- CORS configuration for web clients
+## Resources
+
+Check out a few resources that may come in handy when working with NestJS:
+
+- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
+- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
+- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
+- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
+- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
+- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
+- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
+- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+
+## Support
+
+Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+
+## Stay in touch
+
+- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
+- Website - [https://nestjs.com](https://nestjs.com/)
+- Twitter - [@nestframework](https://twitter.com/nestframework)
 
 ## License
 
-MIT
+Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).

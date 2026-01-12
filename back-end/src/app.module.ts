@@ -1,0 +1,42 @@
+import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { ConfigModule as NestConfigModule } from '@nestjs/config';
+import { ConfigModule } from './config/config.module';
+import { CacheModule } from './cache/cache.module';
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
+import { RelayEmailsModule } from './relay-emails/relay-emails.module';
+import { AwsModule } from './aws/aws.module';
+import { User } from './users/entities/user.entity';
+import { RelayEmail } from './relay-emails/entities/relay-email.entity';
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+
+@Module({
+  imports: [
+    NestConfigModule.forRoot({
+      isGlobal: true,
+    }),
+    TypeOrmModule.forRoot({
+      type: 'mysql',
+      url: process.env.DATABASE_URL,
+      entities: [User, RelayEmail],
+      synchronize: false,
+      logging: process.env.NODE_ENV === 'production',
+    }),
+    ConfigModule,
+    CacheModule,
+    AuthModule,
+    UsersModule,
+    RelayEmailsModule,
+    AwsModule,
+  ],
+  controllers: [],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+  ],
+})
+export class AppModule {}
