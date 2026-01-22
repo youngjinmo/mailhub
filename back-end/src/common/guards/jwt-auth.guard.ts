@@ -6,9 +6,9 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
+import { AuthService } from 'src/auth/auth.service';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { TokenService } from '../../auth/jwt/token.service';
-import { CacheService } from '../../cache/cache.service';
 import type { Response } from 'express';
 
 @Injectable()
@@ -18,7 +18,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   constructor(
     private reflector: Reflector,
     private tokenService: TokenService,
-    private cacheService: CacheService,
+    private authService: AuthService,
   ) {
     super();
   }
@@ -51,7 +51,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
             const userId = BigInt(payload.sub);
 
             // Check if refresh token exists in Redis
-            const isValid = await this.cacheService.validateRefreshToken(
+            const isValid = await this.authService.validateRefreshToken(
               userId,
               refreshToken,
             );

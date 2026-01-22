@@ -4,7 +4,6 @@ import {
   UnauthorizedException,
   HttpException,
   HttpStatus,
-  Logger,
 } from '@nestjs/common';
 import { TokenService } from './jwt/token.service';
 import { CacheService } from '../cache/cache.service';
@@ -31,10 +30,10 @@ export class AuthService {
     // Store the code in Redis with TTL
     const ttl = this.customEnvService.getWithDefault('VERIFICATION_CODE_EXPIRATION', 300000);
 
-    await this.cacheService.storeVerificationCode(username, code, ttl);
+    await this.storeVerificationCode(username, code, ttl);
 
     // Reset verification attempts
-    this.cacheService.resetVerificationAttempts(username);
+    this.resetVerificationAttempts(username);
 
     // Send the code via email
     await this.sendMailService.sendVerificationCode(username, code);
@@ -45,7 +44,7 @@ export class AuthService {
     // Check verification attempts
     const maxAttempts = this.customEnvService.getWithDefault<number>('VERIFICATION_CODE_MAX_ATTEMPTS', 3);
     const attempts =
-      await this.cacheService.getVerificationAttempts(username);
+      await this.getVerificationAttempts(username);
 
     if (maxAttempts && attempts >= maxAttempts) {
       throw new HttpException(
@@ -55,7 +54,7 @@ export class AuthService {
     }
 
     // Get stored verification code
-    const storedCode = await this.cacheService.getVerificationCode(username);
+    const storedCode = await this.getVerificationCode(username);
 
     if (!storedCode) {
       throw new BadRequestException(
@@ -70,13 +69,13 @@ export class AuthService {
         'VERIFICATION_CODE_EXPIRATION',
         300000,
       );
-      await this.cacheService.incrementVerificationAttempts(username, ttl);
+      await this.incrementVerificationAttempts(username, ttl);
       throw new UnauthorizedException('Invalid verification code');
     }
 
     // Code is valid - clean up
-    await this.cacheService.deleteVerificationCode(username);
-    await this.cacheService.resetVerificationAttempts(username);
+    await this.deleteVerificationCode(username);
+    await this.resetVerificationAttempts(username);
 
     // Check if user exists, if not create new user
     let user = await this.usersService.findByUsername(username);
@@ -100,11 +99,7 @@ export class AuthService {
       'JWT_REFRESH_TOKEN_EXPIRATION',
     );
 
-    await this.cacheService.storeRefreshToken(
-      user.id,
-      refreshToken,
-      refreshTtl,
-    );
+    await this.storeRefreshToken(user.id, refreshToken, refreshTtl);
 
     return { accessToken, refreshToken }; // Refresh token will be set in HTTP-only cookie by controller
   }
@@ -120,10 +115,7 @@ export class AuthService {
       const userId = BigInt(payload.sub);
 
       // Check if refresh token exists in Redis
-      const isValid = await this.cacheService.validateRefreshToken(
-        userId,
-        refreshToken,
-      );
+      const isValid = await this.validateRefreshToken(userId, refreshToken);
 
       if (!isValid) {
         throw new UnauthorizedException('Invalid or revoked refresh token');
@@ -143,12 +135,88 @@ export class AuthService {
 
   async logout(userId: bigint): Promise<void> {
     // Remove refresh token from Redis
-    await this.cacheService.deleteRefreshToken(userId);
-    // Remove session if exists
-    await this.cacheService.deleteSession(userId);
+    await this.deleteRefreshToken(userId);
   }
 
-  getRefreshToken(userId: bigint, username: string): string {
+  generateRefreshToken(userId: bigint, username: string): string {
     return this.tokenService.generateRefreshToken(userId, username);
+  }
+
+  private async storeRefreshToken(
+    userId: bigint,
+    token: string,
+    ttl: number,
+  ): Promise<void> {
+    const key = this.getCacheKey(userId);
+    await this.cacheService.set(key, token, ttl);
+  }
+
+  private async getRefreshToken(userId: bigint): Promise<string | null> {
+    const key = this.getCacheKey(userId);
+    return await this.cacheService.get<string>(key);
+  }
+
+  private async deleteRefreshToken(userId: bigint): Promise<void> {
+    const key = this.getCacheKey(userId);
+    await this.cacheService.del(key);
+  }
+
+  async validateRefreshToken(userId: bigint, token: string): Promise<boolean> {
+    const storedToken = await this.getRefreshToken(userId);
+    return storedToken === token;
+  }
+
+  private getCacheKey(userId: bigint): string {
+    return `auth:refresh:token:${userId.toString()}`;
+  }
+
+  private async storeVerificationCode(
+    username: string,
+    code: string,
+    ttl: number,
+  ): Promise<void> {
+    const key = this.getVerificationCodeCacheKey(username);
+    await this.cacheService.set(key, code, ttl);
+  }
+
+  private async getVerificationCode(username: string): Promise<string | null> {
+    const key = this.getVerificationCodeCacheKey(username);
+    return await this.cacheService.get<string>(key);
+  }
+
+  private async deleteVerificationCode(username: string): Promise<void> {
+    const key = this.getVerificationCodeCacheKey(username);
+    await this.cacheService.del(key);
+  }
+
+  private getVerificationCodeCacheKey(username: string): string {
+    return `verification:code:${username}`;
+  }
+
+  // Verification attempts tracking
+  private async getVerificationAttempts(username: string): Promise<number> {
+    const key = this.getVerificationAttemptCacheKey(username);
+    const attempts = await this.cacheService.get<number>(key);
+    return attempts || 0;
+  }
+
+  private async incrementVerificationAttempts(
+    username: string,
+    ttl: number,
+  ): Promise<number> {
+    const key = this.getVerificationAttemptCacheKey(username);
+    const currentAttempts = await this.getVerificationAttempts(username);
+    const newAttempts = currentAttempts + 1;
+    await this.cacheService.set(key, newAttempts, ttl);
+    return newAttempts;
+  }
+
+  private async resetVerificationAttempts(username: string): Promise<void> {
+    const key = this.getVerificationAttemptCacheKey(username);
+    await this.cacheService.del(key);
+  }
+
+  private getVerificationAttemptCacheKey(username: string): string {
+    return `verification:attempts:${username}`;
   }
 }

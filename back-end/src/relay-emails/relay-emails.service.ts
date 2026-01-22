@@ -52,10 +52,7 @@ export class RelayEmailsService {
     const savedRelayEmail = await this.relayEmailRepository.save(relayEmail);
 
     // Cache the mapping
-    await this.cacheService.storeRelayEmailMapping(
-      relayAddress,
-      primaryEmail,
-    );
+    await this.storeRelayEmailMapping(relayAddress, primaryEmail);
 
     return savedRelayEmail;
   }
@@ -65,7 +62,7 @@ export class RelayEmailsService {
   ): Promise<string | null> {
     // Try cache first
     const cachedEmail =
-      await this.cacheService.getPrimaryEmailByRelayEmail(relayAddress);
+      await this.getPrimaryEmailByRelayEmail(relayAddress);
 
     if (cachedEmail) {
       return cachedEmail;
@@ -81,10 +78,7 @@ export class RelayEmailsService {
     }
 
     // Cache for future requests
-    await this.cacheService.storeRelayEmailMapping(
-      relayAddress,
-      relayEmail.primaryEmail,
-    );
+    await this.storeRelayEmailMapping(relayAddress, relayEmail.primaryEmail);
 
     return relayEmail.primaryEmail;
   }
@@ -362,7 +356,7 @@ export class RelayEmailsService {
   private async findPrimaryEmail(relayAddress: string): Promise<string> {
     try {
       // Check cache first
-      const cachedPrimaryEmail = await this.cacheService.getPrimaryEmailByRelayEmail(relayAddress);
+      const cachedPrimaryEmail = await this.getPrimaryEmailByRelayEmail(relayAddress);
       // If does not exists in the cache, find one in the database and store it
       if (!cachedPrimaryEmail) {
         this.logger.debug('no hit cache, request db..');
@@ -371,7 +365,7 @@ export class RelayEmailsService {
           this.logger.error(`Failed to find primary email address by relay address=${relayAddress}`);
           throw new BadRequestException();
         }
-        await this.cacheService.storeRelayEmailMapping(relayAddress, entity.primaryEmail);
+        await this.storeRelayEmailMapping(relayAddress, entity.primaryEmail);
         return entity.primaryEmail;
       }
       return cachedPrimaryEmail;
@@ -415,7 +409,7 @@ export class RelayEmailsService {
     await this.relayEmailRepository.softRemove(relayEmail);
 
     // Remove from cache
-    await this.cacheService.deleteRelayEmailMapping(relayEmail.relayAddress);
+    await this.deleteRelayEmailMapping(relayEmail.relayAddress);
   }
 
   async incrementForwardCount(relayAddress: string): Promise<void> {
@@ -535,5 +529,32 @@ export class RelayEmailsService {
       );
       return null;
     }
+  }
+
+  // cache
+  async storeRelayEmailMapping(
+    relayAddress: string,
+    primaryEmail: string,
+    note?: string
+  ): Promise<void> {
+    const key = this.getCacheKey(relayAddress);
+    // No TTL for relay email mappings (permanent until explicitly deleted)
+    await this.cacheService.set(key, { to: primaryEmail, note: note || null });
+  }
+
+  async getPrimaryEmailByRelayEmail(
+    relayAddress: string,
+  ): Promise<string | null> {
+    const key = this.getCacheKey(relayAddress);
+    return await this.cacheService.get<string>(key);
+  }
+
+  async deleteRelayEmailMapping(relayAddress: string): Promise<void> {
+    const key = this.getCacheKey(relayAddress);
+    await this.cacheService.del(key);
+  }
+
+  private getCacheKey(relayMailAddress: string): string {
+    return `primary:mail:${relayMailAddress}`;
   }
 }
