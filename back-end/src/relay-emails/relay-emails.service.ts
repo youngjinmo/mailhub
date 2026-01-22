@@ -1,14 +1,16 @@
 import { Injectable, NotFoundException, Logger, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Message } from '@aws-sdk/client-sqs';
 import { Repository } from 'typeorm';
 import { randomBytes } from 'crypto';
+import { ParsedMail, simpleParser } from 'mailparser';
 import { CacheService } from '../cache/cache.service';
 import { RelayEmail } from './entities/relay-email.entity';
 import { S3Service } from 'src/aws/s3/s3.service';
 import { S3EventRecord, SqsService } from 'src/aws/sqs/sqs.service';
 import { SendMailService } from 'src/aws/ses/send-mail.service';
-import { ParsedMail, simpleParser } from 'mailparser';
-import { Message } from '@aws-sdk/client-sqs';
+import { SetRelayMailCacheDto } from './dto/set-relay-mail-cache.dto';
+import { CustomEnvService } from 'src/config/custom-env.service';
 
 @Injectable()
 export class RelayEmailsService {
@@ -16,6 +18,7 @@ export class RelayEmailsService {
   constructor(
     @InjectRepository(RelayEmail)
     private readonly relayEmailRepository: Repository<RelayEmail>,
+    private readonly customEnvService: CustomEnvService,
     private readonly s3Service: S3Service,
     private readonly sqsService: SqsService,
     private readonly sendMailService: SendMailService,
@@ -24,7 +27,7 @@ export class RelayEmailsService {
 
   async generateRelayEmailAddress(
     userId: bigint,
-    primaryEmail: string,
+    primaryMailAddress: string,
   ): Promise<RelayEmail> {
     // Generate a unique relay address
     let relayAddress: string = '';
@@ -32,7 +35,7 @@ export class RelayEmailsService {
 
     while (exists) {
       const randomString = randomBytes(8).toString('hex');
-      relayAddress = `${randomString}@private-mailhub.com`;
+      relayAddress = `${randomString}@${this.customEnvService.get<string>('APP_DOMAIN')}`;
 
       // Check if this relay address already exists
       const existing = await this.relayEmailRepository.findOne({
@@ -45,14 +48,17 @@ export class RelayEmailsService {
     // Create the relay email record
     const relayEmail = this.relayEmailRepository.create({
       userId,
-      primaryEmail,
+      primaryEmail: primaryMailAddress,
       relayAddress,
     });
 
     const savedRelayEmail = await this.relayEmailRepository.save(relayEmail);
 
     // Cache the mapping
-    await this.storeRelayEmailMapping(relayAddress, primaryEmail);
+    await this.setRelayMailCache({
+      relayMailAddress: relayAddress,
+      primaryMailAddress
+    });
 
     return savedRelayEmail;
   }
@@ -78,7 +84,10 @@ export class RelayEmailsService {
     }
 
     // Cache for future requests
-    await this.storeRelayEmailMapping(relayAddress, relayEmail.primaryEmail);
+    await this.setRelayMailCache({
+      relayMailAddress: relayAddress,
+      primaryMailAddress: relayEmail.primaryEmail
+    });
 
     return relayEmail.primaryEmail;
   }
@@ -360,13 +369,16 @@ export class RelayEmailsService {
       // If does not exists in the cache, find one in the database and store it
       if (!cachedPrimaryEmail) {
         this.logger.debug('no hit cache, request db..');
-        const entity = await this.relayEmailRepository.findOne({ where: { relayAddress, isActive: true }});
-        if (!entity) {
+        const relayMail = await this.relayEmailRepository.findOne({ where: { relayAddress, isActive: true }});
+        if (!relayMail) {
           this.logger.error(`Failed to find primary email address by relay address=${relayAddress}`);
           throw new BadRequestException();
         }
-        await this.storeRelayEmailMapping(relayAddress, entity.primaryEmail);
-        return entity.primaryEmail;
+        await this.setRelayMailCache({
+          relayMailAddress: relayAddress,
+          primaryMailAddress: relayMail.primaryEmail
+        });
+        return relayMail.primaryEmail;
       }
       return cachedPrimaryEmail;
     } catch (error) {
@@ -457,6 +469,21 @@ export class RelayEmailsService {
       throw new NotFoundException('Relay email not found');
     }
 
+    const cacheKey = this.getRelayMailCacheKey(relayEmail.relayAddress);
+    const cached = await this.cacheService.get<string>(cacheKey);
+
+    if (!!cached && !isActive) {
+      // If exists cache and pause status
+      await this.deleteRelayEmailMapping(relayEmail.relayAddress);
+    } else if (!cached && isActive) {
+      // If no exists cache and live status
+      await this.cacheService.set(cacheKey, relayEmail.primaryEmail);
+      await this.setRelayMailCache({
+        relayMailAddress: relayEmail.relayAddress,
+        primaryMailAddress: relayEmail.primaryEmail
+      });
+    }
+
     relayEmail.isActive = isActive;
     return await this.relayEmailRepository.save(relayEmail);
   }
@@ -532,29 +559,25 @@ export class RelayEmailsService {
   }
 
   // cache
-  async storeRelayEmailMapping(
-    relayAddress: string,
-    primaryEmail: string,
-    note?: string
-  ): Promise<void> {
-    const key = this.getCacheKey(relayAddress);
+  async setRelayMailCache(dto: SetRelayMailCacheDto): Promise<void> {
+    const key = this.getRelayMailCacheKey(dto.relayMailAddress);
     // No TTL for relay email mappings (permanent until explicitly deleted)
-    await this.cacheService.set(key, { to: primaryEmail, note: note || null });
+    await this.cacheService.set(key, { to: dto.primaryMailAddress, note: dto.note || null });
   }
 
   async getPrimaryEmailByRelayEmail(
     relayAddress: string,
   ): Promise<string | null> {
-    const key = this.getCacheKey(relayAddress);
+    const key = this.getRelayMailCacheKey(relayAddress);
     return await this.cacheService.get<string>(key);
   }
 
   async deleteRelayEmailMapping(relayAddress: string): Promise<void> {
-    const key = this.getCacheKey(relayAddress);
+    const key = this.getRelayMailCacheKey(relayAddress);
     await this.cacheService.del(key);
   }
 
-  private getCacheKey(relayMailAddress: string): string {
+  private getRelayMailCacheKey(relayMailAddress: string): string {
     return `primary:mail:${relayMailAddress}`;
   }
 }
