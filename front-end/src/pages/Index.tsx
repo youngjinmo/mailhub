@@ -33,7 +33,15 @@ const Index = () => {
       await sendVerificationCode(email);
       setAuthStep("verification");
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Failed to send verification code");
+      const errorMsg = error instanceof Error ? error.message : "Failed to send verification code";
+
+      // Check if error is related to unsupported email domain
+      if (errorMsg.includes("Email domain not supported")) {
+        setErrorMessage("Sorry, this email domain is not yet supported.");
+      } else {
+        setErrorMessage(errorMsg);
+      }
+
       setShowErrorDialog(true);
     } finally {
       setIsLoading(false);

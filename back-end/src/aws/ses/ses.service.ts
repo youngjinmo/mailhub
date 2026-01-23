@@ -1,5 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { SESClient, SendEmailCommand, SendRawEmailCommand } from '@aws-sdk/client-ses';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { MessageRejected, SESClient, SendEmailCommand, SendRawEmailCommand } from '@aws-sdk/client-ses';
 import { CustomEnvService } from '../../config/custom-env.service';
 import { SendEmailDto } from '../dto/send-email.dto';
 import { createTransport } from 'nodemailer';
@@ -37,6 +37,13 @@ export class SesService {
       this.logger.log(`email sent successfully`);
     } catch (error) {
       this.logger.error(`Failed to send email, error=%o`, error);
+
+      // Check if error is MessageRejected (unauthorized email domain)
+      if (error instanceof MessageRejected) {
+        throw new BadRequestException('Email domain not supported');
+      }
+
+      // Re-throw other errors
       throw error;
     }
   }
