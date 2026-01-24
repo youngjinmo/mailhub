@@ -153,7 +153,7 @@ const Index = () => {
                   <div className="max-w-5xl mx-auto">
                     <div className="rounded-lg border bg-muted/50 shadow-2xl">
                       <img
-                        src="../../public/use_img.png"
+                        src="/use_img.png"
                         alt="Dashboard Preview"
                         className="w-[80%] h-auto rounded-md mx-auto"
                       />
@@ -184,7 +184,7 @@ const Index = () => {
                   className="flex items-center gap-2 text-white hover:opacity-90"
                   style={{ backgroundColor: '#895BF5' }}
                 >
-                  <span style={{ fontSize: '1.1rem' }}>Learn More</span>
+                  <span style={{ fontSize: '0.9rem' }}>Learn More</span>
                   <ChevronDown className="h-4 w-4 animate-bounce" />
                 </Button>
               </div>

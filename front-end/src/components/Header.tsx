@@ -16,7 +16,7 @@ const Header = ({ isLoggedIn, onLogout }: HeaderProps) => {
         <a href="/" className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
             {/* <Mail className="h-4 w-4 text-primary-foreground" /> */}
-            <img src="../../public/logo.png" className="h-8 w-8 text-primary-foreground" />
+            <img src="/logo.png" className="h-8 w-8 text-primary-foreground" />
           </div>
           <span className="font-semibold">{appName}</span>
         </a>
