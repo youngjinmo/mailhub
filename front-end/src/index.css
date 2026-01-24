@@ -152,6 +152,7 @@ All colors MUST be HSL.
 @layer base {
   * {
     @apply border-border;
+    word-break: keep-all;
   }
 
   body {
