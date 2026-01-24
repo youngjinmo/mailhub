@@ -2,7 +2,6 @@ import { Injectable, NotFoundException, Logger, BadRequestException } from '@nes
 import { InjectRepository } from '@nestjs/typeorm';
 import { Message } from '@aws-sdk/client-sqs';
 import { Repository } from 'typeorm';
-import { randomBytes } from 'crypto';
 import { ParsedMail, simpleParser } from 'mailparser';
 import { CacheService } from '../cache/cache.service';
 import { RelayEmail } from './entities/relay-email.entity';
@@ -12,6 +11,7 @@ import { SendMailService } from 'src/aws/ses/send-mail.service';
 import { SetRelayMailCacheDto } from './dto/set-relay-mail-cache.dto';
 import { CustomEnvService } from 'src/config/custom-env.service';
 import { EncryptionUtil } from 'src/common/utils/encryption.util';
+import { generateRandomRelayUsername } from 'src/common/utils/relay-email.util';
 
 @Injectable()
 export class RelayEmailsService {
@@ -40,8 +40,8 @@ export class RelayEmailsService {
     let exists = true;
 
     while (exists) {
-      const randomString = randomBytes(8).toString('hex');
-      relayAddress = `${randomString}@${this.customEnvService.get<string>('APP_DOMAIN')}`;
+      const randomUsername = generateRandomRelayUsername(16);
+      relayAddress = `${randomUsername}@${this.customEnvService.get<string>('APP_DOMAIN')}`;
 
       // Check if this relay address already exists
       const existing = await this.relayEmailRepository.findOne({
@@ -49,6 +49,44 @@ export class RelayEmailsService {
       });
 
       exists = !!existing;
+    }
+
+    // Encrypt primary email before storing
+    const encryptedPrimaryEmail = this.encryptionUtil.encrypt(primaryMailAddress, this.encryptionKey);
+
+    // Create the relay email record
+    const relayEmail = this.relayEmailRepository.create({
+      userId,
+      primaryEmail: encryptedPrimaryEmail,
+      relayAddress,
+    });
+
+    const savedRelayEmail = await this.relayEmailRepository.save(relayEmail);
+
+    // Cache the mapping (store encrypted email in cache too)
+    await this.setRelayMailCache({
+      relayMailAddress: relayAddress,
+      primaryMailAddress: encryptedPrimaryEmail
+    });
+
+    return savedRelayEmail;
+  }
+
+  async generateCustomRelayEmailAddress(
+    userId: bigint,
+    primaryMailAddress: string,
+    customUsername: string,
+  ): Promise<RelayEmail> {
+    // Build custom relay address
+    const relayAddress = `${customUsername}@${this.customEnvService.get<string>('APP_DOMAIN')}`;
+
+    // Check if this relay address already exists
+    const existing = await this.relayEmailRepository.findOne({
+      where: { relayAddress },
+    });
+
+    if (existing) {
+      throw new BadRequestException('Duplicated email address');
     }
 
     // Encrypt primary email before storing
@@ -254,6 +292,10 @@ export class RelayEmailsService {
         throw new BadRequestException('Sender address not found');
       }
 
+      // Get app configuration
+      const appName = this.customEnvService.get<string>('APP_NAME') || 'Mailhub';
+      const appDomain = this.customEnvService.get<string>('APP_DOMAIN') || 'private-mailhub.com';
+
       // Build HTML header for forwarding information
       const htmlHeader = `
         <div style="max-width: 100%; margin: 0 0 20px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
@@ -277,7 +319,7 @@ export class RelayEmailsService {
               <div style="display: flex; align-items: center; justify-content: space-between; padding-top: 8px; border-top: 1px solid #e2e8f0;">
                 <div style="font-size: 11px; color: #a0aec0;">
                   <span style="opacity: 0.7;">🔒 forwarded by</span>
-                  <a href="https://private-mailhub.com" style="color: #667eea; text-decoration: none; font-weight: 600; margin-left: 4px; transition: color 0.2s;" target="_blank">Private-mailhub</a>
+                  <a href="https://${appDomain}" style="color: #667eea; text-decoration: none; font-weight: 600; margin-left: 4px; transition: color 0.2s;" target="_blank">${appName}</a>
                 </div>
                 <div style="font-size: 10px; color: #cbd5e0; letter-spacing: 0.5px;">
                   ✓ SECURED

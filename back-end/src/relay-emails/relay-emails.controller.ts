@@ -16,6 +16,7 @@ import {
 import { RelayEmailsService } from './relay-emails.service';
 import { UsersService } from '../users/users.service';
 import { CreateRelayDto } from './dto/create-relay.dto';
+import { CreateCustomRelayDto } from './dto/create-custom-relay.dto';
 import { FindPrimaryEmailDto } from './dto/find-primary.dto';
 import { UpdateDescriptionDto } from './dto/update-description.dto';
 import { UpdateActiveStatusDto } from './dto/update-active-status.dto';
@@ -53,7 +54,6 @@ export class RelayEmailsController {
   @HttpCode(HttpStatus.CREATED)
   async createRelayEmail(
     @CurrentUser() user: { userId: bigint; username: string },
-    @Body() dto: CreateRelayDto,
   ) {
     // Check subscription tier and limit
     const userEntity = await this.usersService.findById(user.userId);
@@ -73,8 +73,41 @@ export class RelayEmailsController {
     const relayEmail =
       await this.relayEmailsService.generateRelayEmailAddress(
         user.userId,
-        dto.primaryEmail,
+        user.username,
       );
+
+    return {
+      id: relayEmail.id.toString(),
+      relayAddress: relayEmail.relayAddress,
+      primaryEmail: relayEmail.primaryEmail,
+      description: relayEmail.description,
+      isActive: relayEmail.isActive,
+      createdAt: relayEmail.createdAt,
+    };
+  }
+
+  @Post('custom')
+  @HttpCode(HttpStatus.CREATED)
+  async createCustomRelayEmail(
+    @CurrentUser() user: { userId: bigint; username: string },
+    @Body() dto: CreateCustomRelayDto,
+  ) {
+    // Check if user is admin (userId must be 1)
+    if (user.userId !== BigInt(1)) {
+      throw new BadRequestException('Only admin can create custom relay emails');
+    }
+
+    // Get user entity to get primary email
+    const userEntity = await this.usersService.findById(user.userId);
+    if (!userEntity) {
+      throw new NotFoundException('User not found');
+    }
+
+    const relayEmail = await this.relayEmailsService.generateCustomRelayEmailAddress(
+      user.userId,
+      userEntity.username,
+      dto.customUsername,
+    );
 
     return {
       id: relayEmail.id.toString(),
