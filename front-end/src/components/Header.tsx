@@ -54,6 +54,14 @@ const Header = ({ isLoggedIn }: HeaderProps) => {
             >
               About
             </Link>
+            {isLoggedIn && (
+              <Link
+                to="/mypage"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                My Page
+              </Link>
+            )}
             {isLoggedIn ? (
               <Button variant="ghost" size="sm" onClick={handleLogoutClick}>
                 Logout
