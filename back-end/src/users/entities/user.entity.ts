@@ -4,21 +4,45 @@ import {
   PrimaryGeneratedColumn,
   CreateDateColumn,
   UpdateDateColumn,
-  DeleteDateColumn,
   OneToMany,
-  Index,
 } from 'typeorm';
 import { SubscriptionTier } from '../../common/enums/subscription-tier.enum';
 import { RelayEmail } from '../../relay-emails/entities/relay-email.entity';
+import { UserRole, UserStatus } from '../user.enums';
 
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn({ type: 'bigint' })
   id: bigint;
 
-  @Column({ type: 'varchar', length: 255, unique: true })
-  @Index('idx_username')
+  @Column({ type: 'varchar', length: 255 })
   username: string;
+
+  @Column({
+    type: 'char',
+    length: 64,
+    unique: true,
+    name: 'username_hash'
+  })
+  usernameHash: string;
+
+  @Column({
+    type: 'varchar',
+    length: 50,
+    enum: UserRole,
+    default: UserRole.USER,
+    name: 'role',
+  })
+  role: UserRole;
+
+  @Column({
+    type: 'varchar',
+    length: 50,
+    enum: UserStatus,
+    default: UserStatus.ACTIVE,
+    name: 'status',
+  })
+  status: UserStatus;
 
   @Column({
     type: 'enum',
@@ -34,11 +58,26 @@ export class User {
   @UpdateDateColumn({ name: 'updated_at', type: 'datetime' })
   updatedAt: Date;
 
-  @DeleteDateColumn({ name: 'deleted_at', type: 'datetime', nullable: true })
+  @Column({
+    name: 'deactivated_at',
+    type: 'datetime',
+    nullable: true
+  })
+  deactivatedAt: Date | null;
+
+  @Column({
+    name: 'deleted_at',
+    type: 'datetime',
+    nullable: true
+  })
   deletedAt: Date | null;
 
-  @UpdateDateColumn({ name: 'last_logined_at', type: 'datetime' })
-  lastLoginedAt: Date;
+  @Column({ 
+    name: 'last_logined_at', 
+    type: 'datetime', 
+    nullable: true 
+  })
+  lastLoginedAt: Date | null;
 
   @OneToMany(() => RelayEmail, (relayEmail) => relayEmail.user)
   relayEmails: RelayEmail[];
