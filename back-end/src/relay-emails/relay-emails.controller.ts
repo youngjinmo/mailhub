@@ -3,25 +3,22 @@ import {
   Post,
   Get,
   Patch,
-  Query,
   Body,
   Param,
   HttpCode,
   HttpStatus,
   NotFoundException,
-  ForbiddenException,
   BadRequestException,
   Logger,
 } from '@nestjs/common';
 import { RelayEmailsService } from './relay-emails.service';
 import { UsersService } from '../users/users.service';
-import { CreateRelayDto } from './dto/create-relay.dto';
 import { CreateCustomRelayDto } from './dto/create-custom-relay.dto';
-import { FindPrimaryEmailDto } from './dto/find-primary.dto';
 import { UpdateDescriptionDto } from './dto/update-description.dto';
 import { UpdateActiveStatusDto } from './dto/update-active-status.dto';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { CurrentUser, type CurrentUserPayload } from '../common/decorators/current-user.decorator';
 import { SubscriptionTier } from '../common/enums/subscription-tier.enum';
+import { RelayEmail } from './entities/relay-email.entity';
 
 @Controller('relay-emails')
 export class RelayEmailsController {
@@ -33,14 +30,11 @@ export class RelayEmailsController {
 
   @Get()
   @HttpCode(HttpStatus.OK)
-  async getRelayEmails(
-    @CurrentUser() user: { userId: bigint; username: string },
-  ) {
+  async getRelayEmails(@CurrentUser() user: CurrentUserPayload) {
     const relayEmails = await this.relayEmailsService.findByUser(user.userId);
 
     return relayEmails.map((relayEmail) => ({
-      id: relayEmail.id.toString(),
-      relayAddress: relayEmail.relayAddress,
+      relayEmail: relayEmail.relayEmail,
       primaryEmail: relayEmail.primaryEmail,
       description: relayEmail.description,
       isActive: relayEmail.isActive,
@@ -52,17 +46,15 @@ export class RelayEmailsController {
 
   @Post('create')
   @HttpCode(HttpStatus.CREATED)
-  async createRelayEmail(
-    @CurrentUser() user: { userId: bigint; username: string },
-  ) {
+  async createRelayEmail(@CurrentUser() currentUser: CurrentUserPayload): Promise<Partial<RelayEmail>> {
     // Check subscription tier and limit
-    const userEntity = await this.usersService.findById(user.userId);
+    const userEntity = await this.usersService.findById(currentUser.userId);
     if (!userEntity) {
       throw new NotFoundException('User not found');
     }
 
     if (userEntity.subscriptionTier === SubscriptionTier.FREE) {
-      const count = await this.relayEmailsService.countByUser(user.userId);
+      const count = await this.relayEmailsService.countByUser(currentUser.userId);
       if (count >= 3) {
         throw new BadRequestException(
           'FREE tier users can only create up to 3 relay emails',
@@ -70,28 +62,21 @@ export class RelayEmailsController {
       }
     }
 
-    const relayEmail =
-      await this.relayEmailsService.generateRelayEmailAddress(
-        user.userId,
-        user.username,
-      );
-
+    const relayEmailEntity = await this.relayEmailsService.generateRelayEmailAddress(userEntity);
     return {
-      id: relayEmail.id.toString(),
-      relayAddress: relayEmail.relayAddress,
-      primaryEmail: relayEmail.primaryEmail,
-      description: relayEmail.description,
-      isActive: relayEmail.isActive,
-      createdAt: relayEmail.createdAt,
-    };
+      relayEmail: relayEmailEntity.relayEmail,
+      isActive: relayEmailEntity.isActive,
+      description: relayEmailEntity.description,
+      createdAt: relayEmailEntity.createdAt,
+    }
   }
 
   @Post('custom')
   @HttpCode(HttpStatus.CREATED)
   async createCustomRelayEmail(
-    @CurrentUser() user: { userId: bigint; username: string },
+    @CurrentUser() user: CurrentUserPayload,
     @Body() dto: CreateCustomRelayDto,
-  ) {
+  ): Promise<Partial<RelayEmail>> {
     // Check if user is admin (userId must be 1)
     if (user.userId !== BigInt(1)) {
       throw new BadRequestException('Only admin can create custom relay emails');
@@ -103,26 +88,23 @@ export class RelayEmailsController {
       throw new NotFoundException('User not found');
     }
 
-    const relayEmail = await this.relayEmailsService.generateCustomRelayEmailAddress(
-      user.userId,
-      userEntity.username,
-      dto.customUsername,
+    const relayEmailEntity = await this.relayEmailsService.generateCustomRelayEmailAddress(
+      userEntity, 
+      dto.customUsername
     );
 
     return {
-      id: relayEmail.id.toString(),
-      relayAddress: relayEmail.relayAddress,
-      primaryEmail: relayEmail.primaryEmail,
-      description: relayEmail.description,
-      isActive: relayEmail.isActive,
-      createdAt: relayEmail.createdAt,
-    };
+      relayEmail: relayEmailEntity.relayEmail,
+      isActive: relayEmailEntity.isActive,
+      description: relayEmailEntity.description,
+      createdAt: relayEmailEntity.createdAt,
+    }
   }
 
   @Patch(':id/description')
   @HttpCode(HttpStatus.OK)
   async updateDescription(
-    @CurrentUser() user: { userId: bigint; username: string },
+    @CurrentUser() user: CurrentUserPayload,
     @Param('id') id: string,
     @Body() dto: UpdateDescriptionDto,
   ) {
@@ -133,7 +115,7 @@ export class RelayEmailsController {
     );
 
     return {
-      id: relayEmail.id.toString(),
+      relayEmail: relayEmail.relayEmail,
       description: relayEmail.description,
     };
   }
@@ -141,7 +123,7 @@ export class RelayEmailsController {
   @Patch(':id/active')
   @HttpCode(HttpStatus.OK)
   async updateActiveStatus(
-    @CurrentUser() user: { userId: bigint; username: string },
+    @CurrentUser() user: CurrentUserPayload,
     @Param('id') id: string,
     @Body() dto: UpdateActiveStatusDto,
   ) {
@@ -152,31 +134,8 @@ export class RelayEmailsController {
     );
 
     return {
-      id: relayEmail.id.toString(),
+      relayEmail: relayEmail.relayEmail,
       isActive: relayEmail.isActive,
     };
-  }
-
-  @Get('find-primary-email')
-  @HttpCode(HttpStatus.OK)
-  async findPrimaryEmail(
-    @CurrentUser() user: { userId: bigint; username: string },
-    @Query() dto: FindPrimaryEmailDto,
-  ) {
-    const relayEmail =
-      await this.relayEmailsService.findRelayEmailWithUserId(dto.relayEmail);
-
-    if (!relayEmail) {
-      throw new NotFoundException('Relay email not found');
-    }
-
-    // Verify ownership
-    if (relayEmail.userId !== user.userId) {
-      throw new ForbiddenException(
-        'You do not have permission to access this relay email',
-      );
-    }
-
-    return { primaryEmail: relayEmail.primaryEmail };
   }
 }

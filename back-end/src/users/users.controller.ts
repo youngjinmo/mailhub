@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { Public } from '../common/decorators/public.decorator';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { CurrentUser, type CurrentUserPayload } from '../common/decorators/current-user.decorator';
 
 @Controller('users')
 export class UsersController {
@@ -27,7 +27,7 @@ export class UsersController {
 
   @Post('/deactivate')
   async deactivateUser(
-    @CurrentUser() user: { userId: bigint; username: string },
+    @CurrentUser() user: CurrentUserPayload,
   ): Promise<{ message: string }> {
     await this.usersService.deactivateUser(user.userId);
     return { message: 'User deactivated successfully' };
@@ -36,7 +36,7 @@ export class UsersController {
   @Delete('')
   @HttpCode(HttpStatus.OK)
   async deleteCurrentUser(
-    @CurrentUser() user: { userId: bigint; username: string },
+    @CurrentUser() user: CurrentUserPayload,
   ): Promise<{ message: string }> {
     await this.usersService.deleteUser(user.userId);
     return { message: 'User deleted successfully' };

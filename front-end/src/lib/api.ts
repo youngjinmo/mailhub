@@ -341,6 +341,72 @@ export function checkAuth(): boolean {
 }
 
 /**
+ * Check if username exists in the database
+ * @param username - Username to check
+ * @returns Whether the username exists
+ */
+export async function checkUsernameExists(username: string): Promise<boolean> {
+  const response = await fetch(`${API_BASE_URL}/api/users/exists/${encodeURIComponent(username)}`);
+
+  if (!response.ok) {
+    const apiResponse: ApiResponse<any> = await response.json();
+    throw new Error(
+      typeof apiResponse.data === 'string'
+        ? apiResponse.data
+        : 'Failed to check username'
+    );
+  }
+
+  const apiResponse: ApiResponse<{ exists: boolean }> = await response.json();
+  return apiResponse.data.exists;
+}
+
+/**
+ * Deactivate the current user
+ */
+export async function deactivateUser(): Promise<void> {
+  const response = await authenticatedFetch(`${API_BASE_URL}/api/users/deactivate`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const apiResponse: ApiResponse<any> = await response.json();
+    throw new Error(
+      typeof apiResponse.data === 'string'
+        ? apiResponse.data
+        : 'Failed to deactivate user'
+    );
+  }
+}
+
+/**
+ * Delete the current user
+ */
+export async function deleteUser(): Promise<void> {
+  const response = await authenticatedFetch(`${API_BASE_URL}/api/users`, {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const apiResponse: ApiResponse<any> = await response.json();
+    throw new Error(
+      typeof apiResponse.data === 'string'
+        ? apiResponse.data
+        : 'Failed to delete user'
+    );
+  }
+
+  // Clear access token after successful deletion
+  clearAccessToken();
+}
+
+/**
  * Relay Email interfaces
  */
 export interface RelayEmail {
@@ -375,9 +441,8 @@ export async function getRelayEmails(): Promise<RelayEmail[]> {
 
 /**
  * Create a new relay email
- * @param primaryEmail - Primary email address to forward to
  */
-export async function createRelayEmail(primaryEmail: string): Promise<RelayEmail> {
+export async function createRelayEmail(): Promise<RelayEmail> {
   const response = await authenticatedFetch(`${API_BASE_URL}/api/relay-emails/create`, {
     method: 'POST',
     headers: {
@@ -391,6 +456,32 @@ export async function createRelayEmail(primaryEmail: string): Promise<RelayEmail
       typeof apiResponse.data === 'string'
         ? apiResponse.data
         : 'Failed to create relay email'
+    );
+  }
+
+  const apiResponse: ApiResponse<RelayEmail> = await response.json();
+  return apiResponse.data;
+}
+
+/**
+ * Create a custom relay email (admin only)
+ * @param customUsername - Custom username for the relay email
+ */
+export async function createCustomRelayEmail(customUsername: string): Promise<RelayEmail> {
+  const response = await authenticatedFetch(`${API_BASE_URL}/api/relay-emails/custom`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ customUsername }),
+  });
+
+  if (!response.ok) {
+    const apiResponse: ApiResponse<any> = await response.json();
+    throw new Error(
+      typeof apiResponse.data === 'string'
+        ? apiResponse.data
+        : 'Failed to create custom relay email'
     );
   }
 
