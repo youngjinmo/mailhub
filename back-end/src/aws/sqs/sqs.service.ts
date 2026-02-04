@@ -65,7 +65,7 @@ export class SqsService {
       const messages = response.Messages || [];
 
       if (messages.length > 0) {
-        this.logger.debug(`Received ${messages.length} messages from SQS`);
+        this.logger.log(`Received ${messages.length} messages from SQS`);
       }
 
       return messages;
@@ -86,7 +86,7 @@ export class SqsService {
       });
 
       await this.sqsClient.send(command);
-      this.logger.debug('Message deleted from SQS');
+      this.logger.log('Message deleted from SQS');
     } catch (error) {
       this.logger.error(
         `Failed to delete message from SQS: ${error.message}`,

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Message } from '@aws-sdk/client-sqs';
 import { Repository } from 'typeorm';
@@ -196,7 +196,7 @@ export class RelayEmailsService {
       return;
     }
 
-    this.logger.debug(`Processing ${s3Event.Records.length} S3 records in parallel`);
+    this.logger.log(`Processing ${s3Event.Records.length} S3 records in parallel`);
 
     // Process all S3 records in parallel
     await Promise.all(
@@ -210,9 +210,8 @@ export class RelayEmailsService {
     try {
       const bucket = record.s3.bucket.name;
       const key = decodeURIComponent(record.s3.object.key.replace(/\+/g, ' '));
-      const region = record.awsRegion;
 
-      this.logger.debug(`Processing S3 record: s3://${bucket}/${key}`);
+      this.logger.log(`Processing S3 record: s3://${bucket}/${key}`);
 
       // Fetch email from S3
       const s3StartTime = Date.now();
@@ -246,8 +245,9 @@ export class RelayEmailsService {
       // Forward email to primary address
       const forwardStartTime = Date.now();
       await this.forwardEmail(primaryEmail, parsedMail);
-      const forwardElapsed = Date.now() - forwardStartTime;
 
+      // Measure performance
+      const forwardElapsed = Date.now() - forwardStartTime;
       const totalElapsed = Date.now() - startTime;
 
       this.logger.log(
@@ -266,13 +266,16 @@ export class RelayEmailsService {
   
   private async forwardEmail(to: string, mail: ParsedMail) {
     try {
+      // Parse info from mail
       const subject = mail?.subject || '(No Subject)';
-      const from = this.getSender(mail);
-      const toRelay = this.getOriginalRecipient(mail);
-      const toPrimary = to;
-      if (!from) {
+      const originalSenderAddress= this.getSender(mail); // parse original email sender
+      const relayEmailAddress = this.getOriginalRecipient(mail); // parse relay email address
+
+      if (!originalSenderAddress) {
         throw new BadRequestException('Sender address not found');
       }
+
+      const from = `${originalSenderAddress} [via Mailhub] <${relayEmailAddress}>`;
 
       // Get app configuration
       const appName = this.customEnvService.get<string>('APP_NAME') || 'Mailhub';
@@ -288,12 +291,12 @@ export class RelayEmailsService {
                 <div style="display: inline-flex; align-items: center; background: linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%); padding: 4px 10px; border-radius: 6px; font-size: 12px;">
                   <span style="color: #667eea; margin-right: 4px;">▸</span>
                   <span style="color: #4a5568; font-weight: 600;">From:</span>
-                  <span style="color: #2d3748; margin-left: 6px; font-weight: 500;">${this.escapeHtml(from)}</span>
+                  <span style="color: #2d3748; margin-left: 6px; font-weight: 500;">${this.escapeHtml(originalSenderAddress)}</span>
                 </div>
                 <div style="display: inline-flex; align-items: center; background: linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%); padding: 4px 10px; border-radius: 6px; font-size: 12px;">
                   <span style="color: #667eea; margin-right: 4px;">▸</span>
                   <span style="color: #4a5568; font-weight: 600;">To:</span>
-                  <span style="color: #2d3748; margin-left: 6px; font-weight: 500;">${this.escapeHtml(toRelay || '')}</span>
+                  <span style="color: #2d3748; margin-left: 6px; font-weight: 500;">${this.escapeHtml(relayEmailAddress || '')}</span>
                 </div>
               </div>
 
@@ -335,8 +338,10 @@ export class RelayEmailsService {
 
       // Send email via SES (HTML only)
       await this.sendMailService.sendMail({
-        to: toPrimary,
-        from,
+        to,                             // primary email address
+        from,                           // relay email address with display name
+        resentFrom: relayEmailAddress,  // relay email address
+        replyTo: originalSenderAddress, // original sender email address
         subject,
         htmlBody,
         attachments: attachments.length > 0 ? attachments : undefined,
@@ -492,7 +497,7 @@ export class RelayEmailsService {
     return await this.relayEmailRepository.save(relayEmailEntity);
   }
 
-  private getSender(mail: ParsedMail): string | null {
+  private getSender(mail: ParsedMail): string {
     try {
       // Try to get from 'from' field first
       if (mail.from?.value && Array.isArray(mail.from.value) && mail.from.value.length > 0) {
@@ -516,24 +521,25 @@ export class RelayEmailsService {
         }
       }
 
-      this.logger.warn('No sender address found in email');
-      return null;
+      this.logger.error(mail, 'Failed to parse sender address found in email');
+      throw new InternalServerErrorException('Failed to parse sender from mail');
     } catch (error) {
       this.logger.error(
         `Failed to parse sender from email: ${error.message}`,
         error.stack,
       );
-      return null;
+      throw error;
     }
   }
 
-  private getOriginalRecipient(mail: ParsedMail): string | null {
+  // parse relay email address
+  private getOriginalRecipient(mail: ParsedMail): string {
     try {
       const addressObject = mail.to;
 
       if (!addressObject) {
         this.logger.warn('No recipient address object found in email');
-        return null;
+        throw new InternalServerErrorException('Failed to parse mail recipient');
       }
 
       // Handle both single AddressObject and array of AddressObjects
@@ -552,13 +558,13 @@ export class RelayEmailsService {
       }
 
       this.logger.warn('No valid recipient address found in email');
-      return null;
+      throw new InternalServerErrorException('Failed to parse mail recipient');
     } catch (error) {
       this.logger.error(
         `Failed to parse recipient from email: ${error.message}`,
         error.stack,
       );
-      return null;
+      throw error;
     }
   }
 }

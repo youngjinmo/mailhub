@@ -32,7 +32,16 @@ export class MailgunService {
           from: dto.from,
           to: dto.to,
           subject: dto.subject,
+          headers: {},
         };
+
+        if (dto.resentFrom) {
+          mailOptions.headers['Resent-From'] = dto.resentFrom;
+        }
+
+        if (dto.replyTo) {
+          mailOptions.headers['Reply-To'] = dto.replyTo;
+        }
 
         if (dto.htmlBody) {
           mailOptions.html = dto.htmlBody;
@@ -80,7 +89,7 @@ export class MailgunService {
               Authorization: `Basic ${Buffer.from(`api:${this.apiKey}`).toString('base64')}`,
               ...formData.getHeaders(),
             },
-            body: formData.toString(),
+            body: new Uint8Array(formData.getBuffer()),
           },
         );
 
@@ -105,6 +114,13 @@ export class MailgunService {
       params.append('from', dto.from);
       params.append('to', dto.to);
       params.append('subject', dto.subject);
+      if (dto.resentFrom) {
+        params.append('h:Resent-From', dto.resentFrom);
+      }
+
+      if (dto.replyTo) {
+        params.append('h:Reply-To', dto.replyTo);
+      }
 
       // Add HTML body if present
       if (dto.htmlBody) {

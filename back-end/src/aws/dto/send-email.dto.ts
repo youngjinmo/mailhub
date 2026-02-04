@@ -11,10 +11,27 @@ export class EmailAttachment {
 
 export class SendEmailDto {
     @IsEmail()
-    to: string;
+    to: string; // primary email address
 
-    @IsString()
-    from: string;
+    /**
+     * relay email address with display name
+     * or team official email address
+     * e.g. xxx@gmail.com [via Mailhub] <xxx@private-mailhub.com>
+     */
+    @IsEmail()
+    from: string; 
+
+    @IsOptional()
+    @IsEmail()
+    replyTo?: string; // original email sender
+
+    /**
+     * relay email address
+     * e.g. xxx@private-mailhub.com
+     */
+    @IsOptional()
+    @IsEmail()
+    resentFrom?: string; // relay email address   
 
     @IsString()
     subject: string;
