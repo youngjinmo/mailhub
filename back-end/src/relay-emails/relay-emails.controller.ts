@@ -68,11 +68,6 @@ export class RelayEmailsController {
     @CurrentUser() user: CurrentUserPayload,
     @Body() dto: CreateCustomRelayDto,
   ): Promise<Partial<RelayEmail>> {
-    // Check if user is admin (userId must be 1)
-    if (user.userId !== BigInt(1)) {
-      throw new BadRequestException('Only admin can create custom relay emails');
-    }
-
     // Get user entity to get primary email
     const userEntity = await this.usersService.findById(user.userId);
     if (!userEntity) {
