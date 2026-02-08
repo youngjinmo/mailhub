@@ -13,8 +13,7 @@ import { SubscriptionTier } from '../common/enums/subscription-tier.enum';
 import { ProtectionUtil } from 'src/common/utils/protection.util';
 import { UserStatus } from './user.enums';
 import { CacheService } from '../cache/cache.service';
-import { SendMailService } from '../aws/ses/send-mail.service';
-import { CustomEnvService } from '../config/custom-env.service';
+import { SendMailService } from '../mail/send-mail.service';
 
 @Injectable()
 export class UsersService {
@@ -26,7 +25,6 @@ export class UsersService {
     private proectionUtil: ProtectionUtil,
     private cacheService: CacheService,
     private sendMailService: SendMailService,
-    private customEnvService: CustomEnvService,
   ) {}
 
   async findById(id: bigint): Promise<User | null> {

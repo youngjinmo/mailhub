@@ -9,6 +9,7 @@ import { AwsModule } from '../aws/aws.module';
 import { QueuePollerService } from './queue-poller.service';
 import { ProtectionUtil } from '../common/utils/protection.util';
 import { ConfigModule } from 'src/config/config.module';
+import { MailModule } from 'src/mail/mail.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { ConfigModule } from 'src/config/config.module';
     CacheModule,
     UsersModule,
     AwsModule,
+    MailModule,
     ConfigModule,
   ],
   controllers: [RelayEmailsController],

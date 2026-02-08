@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { CustomEnvService } from '../../config/custom-env.service';
-import { SendEmailDto } from '../dto/send-email.dto';
+import { CustomEnvService } from '../config/custom-env.service';
+import { SendEmailDto } from '../aws/dto/send-email.dto';
 import { MailgunService } from 'src/mail/mailgun.service';
+import { SesService } from 'src/aws/ses/ses.service';
 
 @Injectable()
 export class SendMailService {
@@ -10,10 +11,11 @@ export class SendMailService {
   private readonly contactMail: string;
   constructor(
     private mailgunService: MailgunService,
+    private sesService: SesService,
     private customEnvService: CustomEnvService,
   ) {
-    this.fromEmail = customEnvService.get<string>('AWS_SES_FROM_EMAIL');
-    this.contactMail = `contact@${customEnvService.get<string>('APP_DOMAIN')}`;
+    this.fromEmail = customEnvService.get<string>('NO_REPLY_ADDRESS');
+    this.contactMail = customEnvService.get<string>('CONTACT_ADDRESS');
   }
 
   async sendVerificationCodeForNewUser(
@@ -321,6 +323,13 @@ ${this.customEnvService.get<string>('APP_NAME')} Team
   }
 
   async sendMail(dto: SendEmailDto): Promise<void> {
-    await this.mailgunService.sendEmail(dto);
+    // Check process env and seperate mail service
+    if (this.customEnvService.get<string>('NODE_ENV') === 'production') {
+      // if production use mailgun api
+      await this.mailgunService.sendEmail(dto);
+    } else {
+      // if local env, use aws ses sendbox
+      await this.sesService.sendEmail(dto);
+    }
   }
 }

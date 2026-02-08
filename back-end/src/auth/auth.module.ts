@@ -6,6 +6,7 @@ import { TokenService } from './jwt/token.service';
 import { CacheModule } from '../cache/cache.module';
 import { UsersModule } from '../users/users.module';
 import { AwsModule } from '../aws/aws.module';
+import { MailModule } from 'src/mail/mail.module';
 import { CustomEnvService } from '../config/custom-env.service';
 import { ProtectionUtil } from 'src/common/utils/protection.util';
 
@@ -30,6 +31,7 @@ import { ProtectionUtil } from 'src/common/utils/protection.util';
     CacheModule,
     UsersModule,
     AwsModule,
+    MailModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, TokenService, ProtectionUtil],

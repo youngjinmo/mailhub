@@ -6,9 +6,15 @@ import { User } from './entities/user.entity';
 import { ProtectionUtil } from 'src/common/utils/protection.util';
 import { CacheModule } from '../cache/cache.module';
 import { AwsModule } from '../aws/aws.module';
+import { MailModule } from 'src/mail/mail.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User]), CacheModule, AwsModule],
+  imports: [
+    TypeOrmModule.forFeature([User]),
+    CacheModule,
+    AwsModule,
+    MailModule,
+  ],
   controllers: [UsersController],
   providers: [UsersService, ProtectionUtil],
   exports: [UsersService],

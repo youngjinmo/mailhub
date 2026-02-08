@@ -10,6 +10,7 @@ import {
 enum Environment {
   Development = 'development',
   Production = 'production',
+  Local = 'local',
   Test = 'test',
 }
 
@@ -79,14 +80,17 @@ class EnvironmentVariables {
   AWS_S3_EMAIL_BUCKET: string;
 
   @IsString()
-  AWS_SES_FROM_EMAIL: string;
-
-  @IsString()
   AWS_SQS_QUEUE_NAME: string;
 
   @IsString()
   @IsOptional()
   AWS_SQS_QUEUE_URL?: string;
+
+  @IsString()
+  NO_REPLY_ADDRESS: string;
+
+  @IsString()
+  CONTACT_ADDRESS: string;
 
   @IsString()
   CORS_ORIGINS: string;

@@ -14,7 +14,7 @@ import { CacheService } from '../cache/cache.service';
 import { RelayEmail } from './entities/relay-email.entity';
 import { S3Service } from 'src/aws/s3/s3.service';
 import { S3EventRecord, SqsService } from 'src/aws/sqs/sqs.service';
-import { SendMailService } from 'src/aws/ses/send-mail.service';
+import { SendMailService } from 'src/mail/send-mail.service';
 import { CustomEnvService } from 'src/config/custom-env.service';
 import { ProtectionUtil } from 'src/common/utils/protection.util';
 import { generateRandomRelayUsername } from 'src/common/utils/relay-email.util';
