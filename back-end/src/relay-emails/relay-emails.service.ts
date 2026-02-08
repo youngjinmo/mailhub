@@ -267,33 +267,35 @@ export class RelayEmailsService {
         return;
       }
 
-      // Find primary email from cache or database
+      // Find relay email entity from database
       const dbStartTime = Date.now();
-      const primaryEmail = await this.findPrimaryEmailByRelayEmail(relayEmail);
+      const relayEmailEntity = await this.relayEmailRepository.findOne({
+        where: { relayEmail },
+      });
       const dbElapsed = Date.now() - dbStartTime;
 
-      if (!primaryEmail) {
+      if (!relayEmailEntity) {
         this.logger.warn(
-          `No primary email found for relay address: ${relayEmail}`,
+          `No relay email entity found for address: ${relayEmail}`,
         );
         return;
       }
 
-      // Check available status of relay email
-      const relayEmailEntity = await this.relayEmailRepository.findOne({
-        where: { relayEmail },
-      });
-
-      if (!relayEmailEntity?.isActive) {
+      if (!relayEmailEntity.isActive) {
         this.logger.log(
           `Relay email is not active, skipping forward: ${relayEmail}`,
         );
         return;
       }
 
+      // Decrypt primary email
+      const primaryEmail = this.encryptionUtil.decrypt(
+        relayEmailEntity.primaryEmail,
+      );
+
       // Forward email to primary address
       const forwardStartTime = Date.now();
-      await this.forwardEmail(primaryEmail, parsedMail);
+      await this.forwardEmail(primaryEmail, relayEmail, parsedMail);
 
       // Measure performance
       const forwardElapsed = Date.now() - forwardStartTime;
@@ -312,12 +314,15 @@ export class RelayEmailsService {
     }
   }
 
-  private async forwardEmail(to: string, mail: ParsedMail) {
+  private async forwardEmail(
+    primaryEmailAddress: string,
+    relayEmailAddress: string,
+    mail: ParsedMail,
+  ) {
     try {
       // Parse info from mail
       const subject = mail?.subject || '(No Subject)';
       const originalSenderAddress = this.getSender(mail); // parse original email sender
-      const relayEmailAddress = this.getOriginalRecipient(mail); // parse relay email address
 
       if (!originalSenderAddress) {
         throw new BadRequestException('Sender address not found');
@@ -393,18 +398,22 @@ export class RelayEmailsService {
 
       // Send email via SES (HTML only)
       await this.sendMailService.sendMail({
-        to, // primary email address
-        from, // relay email address with display name
-        resentFrom: relayEmailAddress, // relay email address
+        to: primaryEmailAddress,        // primary email address
+        from,                           // relay email address with display name
+        resentFrom: relayEmailAddress,  // relay email address
         replyTo: originalSenderAddress, // original sender email address
         subject,
         htmlBody,
         attachments: attachments.length > 0 ? attachments : undefined,
       });
+
+      // Increment forward count
+      await this.incrementForwardCount(relayEmailAddress);
+      
     } catch (error) {
       const fromAddress = mail?.from?.text ?? 'unknown';
       this.logger.error(
-        `Failed to forward email to ${to} from ${fromAddress}, error=${(error as Error).message}`,
+        `Failed to forward email to ${primaryEmailAddress} from ${fromAddress}, error=${(error as Error).message}`,
         (error as Error).stack,
       );
 
@@ -494,16 +503,15 @@ export class RelayEmailsService {
   }
 
   async incrementForwardCount(relayEmail: string): Promise<void> {
-    await this.relayEmailRepository.increment(
-      { relayEmail },
-      'forwardCount',
-      1,
-    );
-
-    await this.relayEmailRepository.update(
-      { relayEmail },
-      { lastForwardedAt: new Date() },
-    );
+    await this.relayEmailRepository
+      .createQueryBuilder()
+      .update(RelayEmail)
+      .set({
+        forwardCount: () => 'forward_count + 1',
+        lastForwardedAt: new Date(),
+      })
+      .where('relay_email = :relayEmail', { relayEmail })
+      .execute();
   }
 
   async countByUser(userId: bigint): Promise<number> {
