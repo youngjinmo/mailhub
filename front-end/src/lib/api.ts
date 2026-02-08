@@ -13,27 +13,27 @@ interface ApiResponse<T> {
 }
 
 /**
- * SessionStorage key for access token
- * Token will persist through page refreshes but cleared when tab is closed
+ * LocalStorage key for access token
+ * Token will persist across browser sessions until explicitly cleared
  */
 const ACCESS_TOKEN_KEY = 'accessToken';
 
 /**
- * Set the access token in sessionStorage
+ * Set the access token in localStorage
  */
 export function setAccessToken(token: string | null): void {
   if (token) {
-    sessionStorage.setItem(ACCESS_TOKEN_KEY, token);
+    localStorage.setItem(ACCESS_TOKEN_KEY, token);
   } else {
-    sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+    localStorage.removeItem(ACCESS_TOKEN_KEY);
   }
 }
 
 /**
- * Get the current access token from sessionStorage
+ * Get the current access token from localStorage
  */
 export function getAccessToken(): string | null {
-  return sessionStorage.getItem(ACCESS_TOKEN_KEY);
+  return localStorage.getItem(ACCESS_TOKEN_KEY);
 }
 
 /**
@@ -213,10 +213,10 @@ export async function getUsernameFromToken(): Promise<string | null> {
 }
 
 /**
- * Clear the access token from sessionStorage
+ * Clear the access token from localStorage
  */
 export function clearAccessToken(): void {
-  sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
 }
 
 /**
@@ -301,7 +301,7 @@ export async function login(username: string, code: string): Promise<string> {
     throw new Error(typeof apiResponse.data === 'string' ? apiResponse.data : 'Failed to login');
   }
 
-  // Store access token in sessionStorage
+  // Store access token in localStorage
   const { accessToken } = apiResponse.data;
 
   setAccessToken(accessToken);
@@ -333,14 +333,14 @@ export async function logout(): Promise<void> {
     // Ignore errors during logout
     console.error('Logout error:', error);
   } finally {
-    // Always clear access token from sessionStorage
+    // Always clear access token from localStorage
     clearAccessToken();
   }
 }
 
 /**
  * Check if user is authenticated
- * Returns true if access token exists in sessionStorage
+ * Returns true if access token exists in localStorage
  * Note: Token will be automatically refreshed by backend guard on actual API calls
  */
 export function checkAuth(): boolean {
