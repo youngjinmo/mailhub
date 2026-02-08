@@ -3,7 +3,10 @@
     "allow": [
       "Bash(npm install:*)",
       "Bash(npm uninstall:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(npx ts-node:*)",
+      "Bash(npm run migration:generate:*)",
+      "Bash(npm run migration:run:*)"
     ]
   }
 }
