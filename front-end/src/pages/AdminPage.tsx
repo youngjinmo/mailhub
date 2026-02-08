@@ -93,6 +93,13 @@ const AdminPage = () => {
             <p>Last 28 days: {stats.relayEmails.last28Days}</p>
             <p>Last 7 days: {stats.relayEmails.last7Days}</p>
           </div>
+
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold">Forward Count</h2>
+            <p>Total: {stats.forwardCount.total}</p>
+            <p>Last 28 days: {stats.forwardCount.last28Days}</p>
+            <p>Last 7 days: {stats.forwardCount.last7Days}</p>
+          </div>
         </div>
       </main>
       <Footer />

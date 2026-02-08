@@ -25,6 +25,9 @@ export class AdminService {
       totalRelayEmails,
       relayEmailsLast28Days,
       relayEmailsLast7Days,
+      totalForwardCount,
+      forwardCountLast28Days,
+      forwardCountLast7Days,
     ] = await Promise.all([
       this.userRepository.count(),
       this.userRepository.count({
@@ -40,6 +43,23 @@ export class AdminService {
       this.relayEmailRepository.count({
         where: { createdAt: MoreThanOrEqual(days7Ago) },
       }),
+      this.relayEmailRepository
+        .createQueryBuilder('re')
+        .select('COALESCE(SUM(re.forward_count), 0)', 'total')
+        .getRawOne()
+        .then((result) => Number(result.total)),
+      this.relayEmailRepository
+        .createQueryBuilder('re')
+        .select('COALESCE(SUM(re.forward_count), 0)', 'total')
+        .where('re.last_forwarded_at >= :date', { date: days28Ago })
+        .getRawOne()
+        .then((result) => Number(result.total)),
+      this.relayEmailRepository
+        .createQueryBuilder('re')
+        .select('COALESCE(SUM(re.forward_count), 0)', 'total')
+        .where('re.last_forwarded_at >= :date', { date: days7Ago })
+        .getRawOne()
+        .then((result) => Number(result.total)),
     ]);
 
     return {
@@ -52,6 +72,11 @@ export class AdminService {
         total: totalRelayEmails,
         last28Days: relayEmailsLast28Days,
         last7Days: relayEmailsLast7Days,
+      },
+      forwardCount: {
+        total: totalForwardCount,
+        last28Days: forwardCountLast28Days,
+        last7Days: forwardCountLast7Days,
       },
     };
   }

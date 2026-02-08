@@ -639,6 +639,11 @@ export interface AdminDashboardStats {
     last28Days: number;
     last7Days: number;
   };
+  forwardCount: {
+    total: number;
+    last28Days: number;
+    last7Days: number;
+  };
 }
 
 /**
