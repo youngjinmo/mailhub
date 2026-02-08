@@ -54,38 +54,37 @@ Mailhub acts as an intermediary between external senders and your real inbox. He
 
 <br>
 
-## Roadmap
-
-- [ ] Block(filter) sender address when its received
-- [ ] AI-powered email summarization
-- [ ] Enhanced passwordless authentication
-- [ ] Enhanced spam detection by AI
-- [ ] Browser extension for one-click relay address generation
-- [ ] Mobiles apps (iOS/Android)
-
-<br>
-
 # Architecture
 
 Mailhub is built on a robust, event-driven architecture powered by AWS managed services and a NestJS backend.
 
 ```mermaid
-flowchart LR
+flowchart TD
     Sender["📧 External Sender"] -->|"relay@private-mailhub.com"| SES
-
+    
     subgraph AWS["AWS Cloud"]
-        SES["SES"] -->|"Encrypt & Store"| S3["S3"]
-        SES -->|"Enqueue"| SQS["SQS"]
+        SES["SES"]
+        S3["S3"]
+        SQS["SQS"]
         RDS["RDS<br/>(MySQL)"]
+        
+        subgraph EC2["EC2 Instance"]
+            Worker["Email Worker"]
+            Redis["Redis<br/>(Cache)"]
+        end
+        
+        SES -->|"Encrypt & Store"| S3
+        SES -->|"Enqueue"| SQS
     end
-
-    subgraph App["NestJS Backend"]
-        Worker["Email Worker"]
-    end
-
+    
     SQS -->|"Poll"| Worker
     S3 -->|"Decrypt"| Worker
-    RDS -->|"Resolve relay → user"| Worker
+    
+    Worker -->|"1. Check Cache"| Redis
+    Redis -.->|"Cache Miss"| RDS
+    RDS -.->|"Store in Cache"| Redis
+    Redis -->|"relay@private-mailhub.com → real@email.com"| Worker
+    
     Worker -->|"Forward"| Mailgun["Mailgun"]
     Mailgun --> Inbox["📬 User's Inbox"]
 ```
@@ -141,17 +140,16 @@ git clone https://github.com/yourusername/private-mailhub.git
 cd private-mailhub
 
 # Install dependencies
-npm install
+cd /back-end/ ** npm clean install
 
-# Configure environment variables
-cp .env.example .env
-# Edit .env with your AWS credentials, database, Redis, and Mailgun settings
+# Build application
+npm run build
 
 # Run database migrations
 npm run migration:run
 
 # Start the application
-npm run start:prod
+npm run start
 ```
 
 ### Environment Configuration
