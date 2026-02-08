@@ -1,3 +1,5 @@
+import { OAuthProvider } from './oauth-provider.enum';
+
 // API base URL from environment variable
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 const SECRET_KEY = import.meta.env.VITE_ENCRYPTION_KEY as string;
@@ -559,6 +561,9 @@ export interface UserInfo {
   username: string;
   subscriptionTier: string;
   createdAt: string;
+  ghOauth: boolean;
+  aaplOauth: boolean;
+  googOauth: boolean;
 }
 
 /**
@@ -664,4 +669,131 @@ export async function getAdminDashboard(): Promise<AdminDashboardStats> {
 
   const apiResponse: ApiResponse<AdminDashboardStats> = await response.json();
   return apiResponse.data;
+}
+
+/**
+ * Get GitHub OAuth authorization URL from backend
+ */
+export async function getOAuthGithubUrl(redirectUri: string): Promise<string> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/auth/oauth/github/url?redirectUri=${encodeURIComponent(redirectUri)}`,
+  );
+
+  const apiResponse: ApiResponse<{ url: string }> = await response.json();
+
+  if (!response.ok || apiResponse.result === 'fail') {
+    throw new Error(
+      typeof apiResponse.data === 'string' ? apiResponse.data : 'Failed to get GitHub OAuth URL',
+    );
+  }
+
+  return apiResponse.data.url;
+}
+
+/**
+ * Get Google OAuth authorization URL from backend
+ */
+export async function getOAuthGoogleUrl(redirectUri: string): Promise<string> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/auth/oauth/google/url?redirectUri=${encodeURIComponent(redirectUri)}`,
+  );
+
+  const apiResponse: ApiResponse<{ url: string }> = await response.json();
+
+  if (!response.ok || apiResponse.result === 'fail') {
+    throw new Error(
+      typeof apiResponse.data === 'string' ? apiResponse.data : 'Failed to get Google OAuth URL',
+    );
+  }
+
+  return apiResponse.data.url;
+}
+
+/**
+ * OAuth login with GitHub
+ */
+export async function oauthLoginGithub(
+  code: string,
+  redirectUri: string,
+): Promise<{ accessToken: string }> {
+  const response = await fetch(`${API_BASE_URL}/api/auth/oauth/github`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code, redirectUri }),
+  });
+
+  const apiResponse: ApiResponse<{ accessToken: string }> = await response.json();
+
+  if (!response.ok || apiResponse.result === 'fail') {
+    throw new Error(
+      typeof apiResponse.data === 'string' ? apiResponse.data : 'GitHub login failed',
+    );
+  }
+
+  return apiResponse.data;
+}
+
+/**
+ * OAuth login with Google
+ */
+export async function oauthLoginGoogle(
+  code: string,
+  redirectUri: string,
+): Promise<{ accessToken: string }> {
+  const response = await fetch(`${API_BASE_URL}/api/auth/oauth/google`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code, redirectUri }),
+  });
+
+  const apiResponse: ApiResponse<{ accessToken: string }> = await response.json();
+
+  if (!response.ok || apiResponse.result === 'fail') {
+    throw new Error(
+      typeof apiResponse.data === 'string' ? apiResponse.data : 'Google login failed',
+    );
+  }
+
+  return apiResponse.data;
+}
+
+/**
+ * OAuth login with Apple
+ */
+export async function oauthLoginApple(
+  idToken: string,
+): Promise<{ accessToken: string }> {
+  const response = await fetch(`${API_BASE_URL}/api/auth/oauth/apple`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ idToken }),
+  });
+
+  const apiResponse: ApiResponse<{ accessToken: string }> = await response.json();
+
+  if (!response.ok || apiResponse.result === 'fail') {
+    throw new Error(
+      typeof apiResponse.data === 'string' ? apiResponse.data : 'Apple login failed',
+    );
+  }
+
+  return apiResponse.data;
+}
+
+/**
+ * Unlink OAuth provider from current account
+ */
+export async function unlinkOAuth(provider: OAuthProvider): Promise<void> {
+  const response = await authenticatedFetch(`${API_BASE_URL}/api/users/unlink-oauth`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ provider }),
+  });
+
+  if (!response.ok) {
+    const apiResponse: ApiResponse<any> = await response.json();
+    throw new Error(
+      typeof apiResponse.data === 'string' ? apiResponse.data : 'Failed to unlink OAuth',
+    );
+  }
 }

@@ -10,6 +10,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { SubscriptionTier } from '../common/enums/subscription-tier.enum';
+import { OAuthProvider } from '../common/enums/oauth-provider.enum';
 import { ProtectionUtil } from 'src/common/utils/protection.util';
 import { UserStatus } from './user.enums';
 import { CacheService } from '../cache/cache.service';
@@ -123,6 +124,9 @@ export class UsersService {
     username: string;
     subscriptionTier: SubscriptionTier;
     createdAt: Date;
+    ghOauth: boolean;
+    aaplOauth: boolean;
+    googOauth: boolean;
   }> {
     const user = await this.findById(userId);
     if (!user) {
@@ -133,7 +137,78 @@ export class UsersService {
       username: this.proectionUtil.decrypt(user.username),
       subscriptionTier: user.subscriptionTier,
       createdAt: user.createdAt,
+      ghOauth: !!user.githubOAuth,
+      aaplOauth: !!user.appleOAuth,
+      googOauth: !!user.googleOAuth,
     };
+  }
+
+  private static readonly OAUTH_FIELD_MAP: Record<OAuthProvider, keyof User> = {
+    [OAuthProvider.GITHUB]: 'githubOAuth',
+    [OAuthProvider.APPLE]: 'appleOAuth',
+    [OAuthProvider.GOOGLE]: 'googleOAuth',
+  };
+
+  async findByOAuthId(
+    provider: OAuthProvider,
+    oauthId: string,
+  ): Promise<User | null> {
+    const field = UsersService.OAUTH_FIELD_MAP[provider];
+    return await this.userRepository.findOne({
+      where: { [field]: oauthId },
+    });
+  }
+
+  async createOAuthUser(
+    encryptedEmail: string,
+    provider: OAuthProvider,
+    oauthId: string,
+  ): Promise<User> {
+    try {
+      const email = this.proectionUtil.decrypt(encryptedEmail);
+      const usernameHash = this.proectionUtil.hash(email);
+
+      const existingUser = await this.findByUsernameHash(usernameHash);
+      if (existingUser) {
+        throw new ConflictException('User already exists');
+      }
+
+      const field = UsersService.OAUTH_FIELD_MAP[provider];
+      const user = this.userRepository.create({
+        username: encryptedEmail,
+        usernameHash,
+        [field]: oauthId,
+      });
+
+      return await this.userRepository.save(user);
+    } catch (err) {
+      if (err instanceof ConflictException) throw err;
+      this.logger.error(err, 'Failed to create OAuth user');
+      throw new InternalServerErrorException('Failed to create user');
+    }
+  }
+
+  async linkOAuth(
+    userId: bigint,
+    provider: OAuthProvider,
+    oauthId: string,
+  ): Promise<void> {
+    const field = UsersService.OAUTH_FIELD_MAP[provider];
+    await this.userRepository.update(
+      { id: userId },
+      { [field]: oauthId },
+    );
+  }
+
+  async unlinkOAuth(
+    userId: bigint,
+    provider: OAuthProvider,
+  ): Promise<void> {
+    const field = UsersService.OAUTH_FIELD_MAP[provider];
+    await this.userRepository.update(
+      { id: userId },
+      { [field]: null },
+    );
   }
 
   async requestUsernameChange(

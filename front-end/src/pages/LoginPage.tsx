@@ -4,7 +4,8 @@ import EmailInput from '@/components/EmailInput';
 import VerificationInput from '@/components/VerificationInput';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { sendVerificationCode, login, checkAuth } from '@/lib/api';
+import OAuthButtons from '@/components/OAuthButtons';
+import { sendVerificationCode, login, oauthLoginApple, checkAuth, setAccessToken } from '@/lib/api';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -76,6 +77,20 @@ const LoginPage = () => {
     setIsNewUser(false);
   };
 
+  const handleAppleLogin = async (idToken: string) => {
+    setIsLoading(true);
+    try {
+      const { accessToken } = await oauthLoginApple(idToken);
+      setAccessToken(accessToken);
+      navigate('/dashboard', { replace: true });
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Apple login failed');
+      setShowErrorDialog(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <>
       <div className="flex min-h-screen flex-col">
@@ -89,6 +104,7 @@ const LoginPage = () => {
                   <h1 className="text-3xl font-bold">Sign in to your account</h1>
                   <p className="text-muted-foreground">Enter your email address to continue</p>
                 </div>
+                <OAuthButtons onAppleLogin={handleAppleLogin} isLoading={isLoading} />
                 <EmailInput onSubmit={handleEmailSubmit} isLoading={isLoading} />
               </>
             )}

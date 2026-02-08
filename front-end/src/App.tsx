@@ -9,6 +9,7 @@ import DashboardPage from './pages/DashboardPage';
 import AboutPage from './pages/AboutPage';
 import MyPage from './pages/MyPage';
 import AdminPage from './pages/AdminPage';
+import OAuthCallbackPage from './pages/OAuthCallbackPage';
 import NotFound from './pages/NotFound';
 
 const queryClient = new QueryClient();
@@ -27,6 +28,7 @@ const App = () => (
           <Route path="/about" element={<AboutPage />} />
           <Route path="/mypage" element={<MyPage />} />
           <Route path="/admin" element={<AdminPage />} />
+          <Route path="/login/oauth/:provider/callback" element={<OAuthCallbackPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

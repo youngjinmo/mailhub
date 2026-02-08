@@ -1,0 +1,308 @@
+import {
+  Injectable,
+  UnauthorizedException,
+  Logger,
+} from '@nestjs/common';
+import * as crypto from 'crypto';
+import { TokenService } from './jwt/token.service';
+import { CacheService } from '../cache/cache.service';
+import { UsersService } from '../users/users.service';
+import { CustomEnvService } from '../config/custom-env.service';
+import { ProtectionUtil } from 'src/common/utils/protection.util';
+import { OAuthProvider } from 'src/common/enums/oauth-provider.enum';
+import { AuthResponseDto } from './dto/auth-response.dto';
+
+interface AppleJWK {
+  kty: string;
+  kid: string;
+  use: string;
+  alg: string;
+  n: string;
+  e: string;
+}
+
+@Injectable()
+export class OAuthService {
+  private readonly logger = new Logger(OAuthService.name);
+
+  constructor(
+    private readonly tokenService: TokenService,
+    private readonly cacheService: CacheService,
+    private readonly usersService: UsersService,
+    private readonly customEnvService: CustomEnvService,
+    private readonly protectionUtil: ProtectionUtil,
+  ) {}
+
+  getGithubAuthUrl(redirectUri: string): { url: string } {
+    const clientId = this.customEnvService.get<string>('GITHUB_CLIENT_ID');
+    const state = JSON.stringify({ provider: 'github' });
+    const url = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=user:email&state=${encodeURIComponent(state)}`;
+    return { url };
+  }
+
+  getGoogleAuthUrl(redirectUri: string): { url: string } {
+    const clientId = this.customEnvService.get<string>('GOOGLE_CLIENT_ID');
+    const state = JSON.stringify({ provider: 'google' });
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=openid%20email&state=${encodeURIComponent(state)}&access_type=offline&prompt=consent`;
+    return { url };
+  }
+
+  async loginWithGithub(
+    code: string,
+    redirectUri: string,
+  ): Promise<AuthResponseDto> {
+    const clientId = this.customEnvService.get<string>('GITHUB_CLIENT_ID');
+    const clientSecret =
+      this.customEnvService.get<string>('GITHUB_CLIENT_SECRET');
+
+    // Exchange code for access token
+    const tokenResponse = await fetch(
+      'https://github.com/login/oauth/access_token',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          client_id: clientId,
+          client_secret: clientSecret,
+          code,
+          redirect_uri: redirectUri,
+        }),
+      },
+    );
+
+    const tokenData = await tokenResponse.json();
+    if (tokenData.error) {
+      this.logger.error(tokenData, 'GitHub OAuth token exchange failed');
+      throw new UnauthorizedException('GitHub OAuth authentication failed');
+    }
+
+    // Get user info from GitHub
+    const userResponse = await fetch('https://api.github.com/user', {
+      headers: {
+        Authorization: `Bearer ${tokenData.access_token}`,
+        Accept: 'application/json',
+      },
+    });
+
+    if (!userResponse.ok) {
+      throw new UnauthorizedException('Failed to fetch GitHub user info');
+    }
+
+    const githubUser = await userResponse.json();
+    const oauthId = githubUser.id.toString();
+
+    // Get primary email from GitHub
+    const emailResponse = await fetch('https://api.github.com/user/emails', {
+      headers: {
+        Authorization: `Bearer ${tokenData.access_token}`,
+        Accept: 'application/json',
+      },
+    });
+
+    let email: string | null = null;
+    if (emailResponse.ok) {
+      const emails = await emailResponse.json();
+      const primaryEmail = emails.find(
+        (e: { primary: boolean; verified: boolean; email: string }) =>
+          e.primary && e.verified,
+      );
+      email = primaryEmail?.email || null;
+    }
+
+    if (!email) {
+      throw new UnauthorizedException(
+        'No verified primary email found on GitHub account',
+      );
+    }
+
+    return this.processOAuthUser(email, OAuthProvider.GITHUB, oauthId);
+  }
+
+  async loginWithGoogle(
+    code: string,
+    redirectUri: string,
+  ): Promise<AuthResponseDto> {
+    const clientId = this.customEnvService.get<string>('GOOGLE_CLIENT_ID');
+    const clientSecret =
+      this.customEnvService.get<string>('GOOGLE_CLIENT_SECRET');
+
+    // Exchange code for tokens
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        code,
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: redirectUri,
+        grant_type: 'authorization_code',
+      }),
+    });
+
+    const tokenData = await tokenResponse.json();
+    if (tokenData.error) {
+      this.logger.error(tokenData, 'Google OAuth token exchange failed');
+      throw new UnauthorizedException('Google OAuth authentication failed');
+    }
+
+    // Decode id_token to get user info (Google id_token is a JWT)
+    const idTokenPayload = this.decodeJwtPayload(tokenData.id_token);
+    if (!idTokenPayload || !idTokenPayload.email) {
+      throw new UnauthorizedException(
+        'Failed to extract user info from Google token',
+      );
+    }
+
+    const email = idTokenPayload.email as string;
+    const oauthId = idTokenPayload.sub as string;
+
+    return this.processOAuthUser(email, OAuthProvider.GOOGLE, oauthId);
+  }
+
+  async loginWithApple(idToken: string): Promise<AuthResponseDto> {
+    // Verify Apple id_token using JWKS
+    const payload = await this.verifyAppleIdToken(idToken);
+
+    if (!payload || !payload.email) {
+      throw new UnauthorizedException(
+        'Failed to extract user info from Apple token',
+      );
+    }
+
+    const email = payload.email as string;
+    const oauthId = payload.sub as string;
+
+    return this.processOAuthUser(email, OAuthProvider.APPLE, oauthId);
+  }
+
+  private async processOAuthUser(
+    email: string,
+    provider: OAuthProvider,
+    oauthId: string,
+  ): Promise<AuthResponseDto> {
+    // 1. Find user by OAuth ID
+    let user = await this.usersService.findByOAuthId(provider, oauthId);
+
+    if (!user) {
+      // 2. Find user by email hash
+      const emailHash = this.protectionUtil.hash(email);
+      user = await this.usersService.findByUsernameHash(emailHash);
+
+      if (user) {
+        // Link OAuth to existing user
+        await this.usersService.linkOAuth(user.id, provider, oauthId);
+      } else {
+        // 3. Create new user
+        const encryptedEmail = this.protectionUtil.encrypt(email);
+        user = await this.usersService.createOAuthUser(
+          encryptedEmail,
+          provider,
+          oauthId,
+        );
+      }
+    }
+
+    // Update last login
+    await this.usersService.updateUser(user.usernameHash, {
+      lastLoginedAt: new Date(),
+    });
+
+    // Generate tokens
+    const { accessToken, refreshToken } = this.tokenService.generateTokens(
+      user.id,
+      user.username,
+    );
+
+    // Store session
+    await this.cacheService.setSession(accessToken, refreshToken);
+
+    return { accessToken };
+  }
+
+  private decodeJwtPayload(token: string): Record<string, unknown> | null {
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) return null;
+      const payload = Buffer.from(parts[1], 'base64url').toString('utf-8');
+      return JSON.parse(payload);
+    } catch {
+      return null;
+    }
+  }
+
+  private async verifyAppleIdToken(
+    idToken: string,
+  ): Promise<Record<string, unknown> | null> {
+    try {
+      // Decode header to get kid
+      const headerB64 = idToken.split('.')[0];
+      const header = JSON.parse(
+        Buffer.from(headerB64, 'base64url').toString('utf-8'),
+      );
+      const kid = header.kid;
+
+      // Fetch Apple's JWKS
+      const jwksResponse = await fetch(
+        'https://appleid.apple.com/auth/keys',
+      );
+      const jwks = await jwksResponse.json();
+      const key = jwks.keys.find((k: AppleJWK) => k.kid === kid);
+
+      if (!key) {
+        throw new Error('Apple public key not found');
+      }
+
+      // Convert JWK to PEM for verification
+      const publicKey = crypto.createPublicKey({
+        key: key,
+        format: 'jwk',
+      });
+
+      // Verify the JWT signature
+      const [headerPart, payloadPart, signaturePart] = idToken.split('.');
+      const data = `${headerPart}.${payloadPart}`;
+      const signature = Buffer.from(signaturePart, 'base64url');
+
+      const isValid = crypto.verify(
+        'RSA-SHA256',
+        Buffer.from(data),
+        publicKey,
+        signature,
+      );
+
+      if (!isValid) {
+        throw new Error('Invalid Apple id_token signature');
+      }
+
+      // Verify claims
+      const payload = JSON.parse(
+        Buffer.from(payloadPart, 'base64url').toString('utf-8'),
+      );
+
+      const appleClientId =
+        this.customEnvService.get<string>('APPLE_CLIENT_ID');
+
+      if (payload.iss !== 'https://appleid.apple.com') {
+        throw new Error('Invalid issuer');
+      }
+
+      if (payload.aud !== appleClientId) {
+        throw new Error('Invalid audience');
+      }
+
+      if (payload.exp * 1000 < Date.now()) {
+        throw new Error('Token expired');
+      }
+
+      return payload;
+    } catch (error) {
+      this.logger.error(error, 'Apple id_token verification failed');
+      throw new UnauthorizedException('Apple OAuth authentication failed');
+    }
+  }
+}

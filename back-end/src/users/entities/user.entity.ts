@@ -79,6 +79,30 @@ export class User {
   })
   lastLoginedAt: Date | null;
 
+  @Column({
+    name: 'gh_oauth',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
+  githubOAuth: string | null;
+
+  @Column({
+    name: 'aapl_oauth',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
+  appleOAuth: string | null;
+
+  @Column({
+    name: 'goog_oauth',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
+  googleOAuth: string | null;
+
   @OneToMany(() => RelayEmail, (relayEmail) => relayEmail.user)
   relayEmails: RelayEmail[];
 }

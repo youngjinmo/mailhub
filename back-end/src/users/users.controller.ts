@@ -16,6 +16,7 @@ import {
 } from '../common/decorators/current-user.decorator';
 import { ChangeUsernameDto } from './dto/change-username.dto';
 import { VerifyUsernameChangeDto } from './dto/verify-username-change.dto';
+import { UnlinkOAuthDto } from './dto/unlink-oauth.dto';
 
 @Controller('users')
 export class UsersController {
@@ -50,10 +51,18 @@ export class UsersController {
 
   @Get('me')
   @HttpCode(HttpStatus.OK)
-  async getCurrentUser(
-    @CurrentUser() user: CurrentUserPayload,
-  ): Promise<{ username: string; subscriptionTier: string; createdAt: Date }> {
+  async getCurrentUser(@CurrentUser() user: CurrentUserPayload) {
     return await this.usersService.getUserInfo(user.userId);
+  }
+
+  @Post('unlink-oauth')
+  @HttpCode(HttpStatus.OK)
+  async unlinkOAuth(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: UnlinkOAuthDto,
+  ): Promise<{ message: string }> {
+    await this.usersService.unlinkOAuth(user.userId, dto.provider);
+    return { message: `${dto.provider} OAuth unlinked successfully` };
   }
 
   @Post('change-username')

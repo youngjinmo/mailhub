@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { OAuthService } from './oauth.service';
 import { TokenService } from './jwt/token.service';
 import { CacheModule } from '../cache/cache.module';
 import { UsersModule } from '../users/users.module';
@@ -34,7 +35,7 @@ import { ProtectionUtil } from 'src/common/utils/protection.util';
     MailModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, TokenService, ProtectionUtil],
-  exports: [AuthService, TokenService],
+  providers: [AuthService, OAuthService, TokenService, ProtectionUtil],
+  exports: [AuthService, OAuthService, TokenService],
 })
 export class AuthModule {}

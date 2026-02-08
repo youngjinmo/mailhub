@@ -4,6 +4,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import UpdatePrimaryEmail from '@/components/UpdatePrimaryEmail';
 import DeactivateAccount from '@/components/DeactivateAccount';
+import OAuthManagement from '@/components/OAuthManagement';
 import { getUserInfo, checkAuth, logout } from '@/lib/api';
 import type { UserInfo } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -42,6 +43,15 @@ const MyPage = () => {
 
   const handleUserInfoUpdate = async () => {
     // Will be redirected to home after email change
+  };
+
+  const handleOAuthUpdate = async () => {
+    try {
+      const info = await getUserInfo();
+      setUserInfo(info);
+    } catch (error) {
+      console.error('Failed to refresh user info:', error);
+    }
   };
 
   const formatJoinedDate = (dateString: string) => {
@@ -107,6 +117,17 @@ const MyPage = () => {
               />
             </CardContent>
           </Card>
+
+          {(userInfo.ghOauth || userInfo.aaplOauth || userInfo.googOauth) && (
+            <Card>
+              <CardHeader>
+                <CardTitle>OAuth Management</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <OAuthManagement userInfo={userInfo} onUpdate={handleOAuthUpdate} />
+              </CardContent>
+            </Card>
+          )}
 
           <Card className="border-destructive">
             <CardHeader>
