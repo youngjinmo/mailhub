@@ -25,7 +25,7 @@ import { UserRole } from 'src/users/user.enums';
 @Injectable()
 export class RelayEmailsService {
   private readonly logger = new Logger(RelayEmailsService.name);
-  private readonly FREE_LIMIT = 5;
+  private readonly FREE_LIMIT = 20;
 
   constructor(
     @InjectRepository(RelayEmail)
