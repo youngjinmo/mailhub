@@ -477,6 +477,7 @@ export class RelayEmailsService {
   async findByUser(userId: bigint): Promise<RelayEmail[]> {
     return await this.relayEmailRepository.find({
       where: { userId },
+      order: { createdAt: 'DESC' },
     });
   }
 
