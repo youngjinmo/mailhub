@@ -12,14 +12,26 @@ import {
   updateRelayEmailDescription,
   updateRelayEmailActiveStatus,
 } from '@/lib/api';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from '@/components/ui/pagination';
 
 interface RelayEmailDashboardProps {
   userEmail: string;
   onLogout?: () => void;
 }
 
+const ITEMS_PER_PAGE = 5;
+
 const RelayEmailDashboard = ({ userEmail }: RelayEmailDashboardProps) => {
   const [isCreating, setIsCreating] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const queryClient = useQueryClient();
 
   // Fetch relay emails
@@ -33,6 +45,7 @@ const RelayEmailDashboard = ({ userEmail }: RelayEmailDashboardProps) => {
     mutationFn: () => createRelayEmail(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['relayEmails'] });
+      setCurrentPage(1);
       toast.success('Private email created successfully');
     },
     onError: (error: Error) => {
@@ -97,31 +110,104 @@ const RelayEmailDashboard = ({ userEmail }: RelayEmailDashboardProps) => {
           {isCreating ? 'Creating...' : 'Create New Private Email'}
         </Button>
 
-        {isLoading ? (
-          <div className="text-center py-12 text-muted-foreground">
-            <p>Loading private emails...</p>
-          </div>
-        ) : relayEmails.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            <p>No private emails created yet.</p>
-            <p className="text-sm mt-1">Click the button above to create a new relay email.</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {relayEmails.map((relayEmail) => (
-              <RelayEmailCard
-                key={relayEmail.id}
-                email={relayEmail.relayEmail}
-                description={relayEmail.description}
-                isActive={relayEmail.isActive}
-                onToggle={(active) => handleToggle(relayEmail.id, active)}
-                onUpdateDescription={(description) =>
-                  handleUpdateDescription(relayEmail.id, description)
-                }
-              />
-            ))}
-          </div>
-        )}
+        {(() => {
+          const totalPages = Math.ceil(relayEmails.length / ITEMS_PER_PAGE);
+          const safePage = Math.min(currentPage, totalPages || 1);
+          const paginatedEmails = relayEmails.slice(
+            (safePage - 1) * ITEMS_PER_PAGE,
+            safePage * ITEMS_PER_PAGE,
+          );
+
+          const getPageNumbers = () => {
+            const pages: (number | 'ellipsis')[] = [];
+            if (totalPages <= 5) {
+              for (let i = 1; i <= totalPages; i++) pages.push(i);
+            } else {
+              pages.push(1);
+              if (safePage > 3) pages.push('ellipsis');
+              const start = Math.max(2, safePage - 1);
+              const end = Math.min(totalPages - 1, safePage + 1);
+              for (let i = start; i <= end; i++) pages.push(i);
+              if (safePage < totalPages - 2) pages.push('ellipsis');
+              pages.push(totalPages);
+            }
+            return pages;
+          };
+
+          if (isLoading) {
+            return (
+              <div className="text-center py-12 text-muted-foreground">
+                <p>Loading private emails...</p>
+              </div>
+            );
+          }
+
+          if (relayEmails.length === 0) {
+            return (
+              <div className="text-center py-12 text-muted-foreground">
+                <p>No private emails created yet.</p>
+                <p className="text-sm mt-1">Click the button above to create a new relay email.</p>
+              </div>
+            );
+          }
+
+          return (
+            <>
+              <div className="space-y-3">
+                {paginatedEmails.map((relayEmail) => (
+                  <RelayEmailCard
+                    key={relayEmail.id}
+                    email={relayEmail.relayEmail}
+                    description={relayEmail.description}
+                    isActive={relayEmail.isActive}
+                    onToggle={(active) => handleToggle(relayEmail.id, active)}
+                    onUpdateDescription={(description) =>
+                      handleUpdateDescription(relayEmail.id, description)
+                    }
+                  />
+                ))}
+              </div>
+
+              {relayEmails.length > 0 && (
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        className={safePage <= 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                      />
+                    </PaginationItem>
+
+                    {getPageNumbers().map((page, idx) =>
+                      page === 'ellipsis' ? (
+                        <PaginationItem key={`ellipsis-${idx}`}>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      ) : (
+                        <PaginationItem key={page}>
+                          <PaginationLink
+                            isActive={page === safePage}
+                            onClick={() => setCurrentPage(page)}
+                            className="cursor-pointer"
+                          >
+                            {page}
+                          </PaginationLink>
+                        </PaginationItem>
+                      ),
+                    )}
+
+                    <PaginationItem>
+                      <PaginationNext
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        className={safePage >= totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              )}
+            </>
+          );
+        })()}
       </main>
 
       <Footer />
