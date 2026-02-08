@@ -9,6 +9,7 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { RelayEmailsModule } from './relay-emails/relay-emails.module';
 import { AwsModule } from './aws/aws.module';
+import { AdminModule } from './admin/admin.module';
 import { User } from './users/entities/user.entity';
 import { RelayEmail } from './relay-emails/entities/relay-email.entity';
 import { AuthGuard } from './common/guards/auth.guard';
@@ -36,6 +37,7 @@ import { AuthGuard } from './common/guards/auth.guard';
     UsersModule,
     RelayEmailsModule,
     AwsModule,
+    AdminModule,
   ],
   controllers: [],
   providers: [

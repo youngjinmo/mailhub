@@ -29,7 +29,9 @@
       "Bash(gh issue view:*)",
       "Bash(git checkout:*)",
       "Bash(git rm:*)",
-      "Bash(git rebase:*)"
+      "Bash(git rebase:*)",
+      "Bash(git stash:*)",
+      "Bash(git stash pop:*)"
     ]
   }
 }

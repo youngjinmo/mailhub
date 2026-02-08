@@ -624,3 +624,39 @@ export async function verifyUsernameChange(code: string): Promise<void> {
   // Clear access token after successful username change
   clearAccessToken();
 }
+
+/**
+ * Admin dashboard stats interface
+ */
+export interface AdminDashboardStats {
+  users: {
+    total: number;
+    last28Days: number;
+    last7Days: number;
+  };
+  relayEmails: {
+    total: number;
+    last28Days: number;
+    last7Days: number;
+  };
+}
+
+/**
+ * Get admin dashboard stats
+ */
+export async function getAdminDashboard(): Promise<AdminDashboardStats> {
+  const response = await authenticatedFetch(`${API_BASE_URL}/api/admin/dashboard`);
+
+  if (!response.ok) {
+    if (response.status === 403) {
+      throw new Error('Access denied');
+    }
+    const apiResponse: ApiResponse<any> = await response.json();
+    throw new Error(
+      typeof apiResponse.data === 'string' ? apiResponse.data : 'Failed to fetch admin dashboard',
+    );
+  }
+
+  const apiResponse: ApiResponse<AdminDashboardStats> = await response.json();
+  return apiResponse.data;
+}
