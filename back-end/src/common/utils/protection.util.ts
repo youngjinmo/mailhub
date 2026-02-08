@@ -126,6 +126,6 @@ export class ProtectionUtil {
    * @returns Base64 encoded 32-byte key
    */
   generateKey(): string {
-    return crypto.randomBytes(32).toString('base64');
+    return crypto.randomBytes(32).toString(this.ENCODE_ALGORITHM);
   }
 }
