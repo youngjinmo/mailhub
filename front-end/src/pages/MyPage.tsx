@@ -131,7 +131,7 @@ const MyPage = () => {
 
           <Card className="border-destructive">
             <CardHeader>
-              <CardTitle className="text-destructive">Danger Zone</CardTitle>
+              <CardTitle className="text-destructive">Deactivate Account</CardTitle>
             </CardHeader>
             <CardContent>
               <DeactivateAccount />

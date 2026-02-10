@@ -46,7 +46,6 @@ const DeactivateAccount = () => {
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-lg font-semibold mb-2">Deactivate Account</h3>
         <p className="text-sm text-muted-foreground mb-4">
           Once deactivated, all your private emails will be disabled. <br />
           Your account will be permanently deleted after 30 days.
