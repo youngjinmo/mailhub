@@ -30,8 +30,8 @@ const RelayEmailCard = ({
   };
 
   const handleSaveDescription = async () => {
-    if (localDescription.length > 20) {
-      toast.error('Description must be less than 20 characters');
+    if (localDescription.length > 100) {
+      toast.error('Description must be less than 100 characters');
       return;
     }
 
@@ -63,10 +63,10 @@ const RelayEmailCard = ({
         <div className="flex items-center gap-2">
           <Input
             type="text"
-            placeholder="Add memo (max 20 chars)"
+            placeholder="e.g. Facebook, Instagram"
             value={localDescription}
             onChange={(e) => setLocalDescription(e.target.value)}
-            maxLength={20}
+            maxLength={100}
             className="flex-1 h-8 text-sm"
           />
           <Button
