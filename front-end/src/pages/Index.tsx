@@ -79,7 +79,7 @@ const Index = () => {
                   <img
                     src="/landing-main.png"
                     alt="main"
-                    className="w-[80%] h-auto rounded-md mx-auto"
+                    className="w-full h-auto rounded-md mx-auto"
                   />
                 </div>
               </div>
@@ -311,7 +311,7 @@ const Index = () => {
                         <span className="text-sm text-muted-foreground">Apple devices only</span>
                       </td>
                       <td className="text-center p-4">
-                        <span className="font-semibold text-primary">None</span>
+                        <span className="text-sm text-muted-foreground">None</span>
                       </td>
                     </tr>
                     <tr className="border-b hover:bg-muted/30 transition-colors">
