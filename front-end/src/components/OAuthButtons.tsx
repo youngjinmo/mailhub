@@ -1,6 +1,7 @@
 import { getOAuthGithubUrl, getOAuthGoogleUrl } from '@/lib/api';
 
-const APPLE_CLIENT_ID = import.meta.env.VITE_APPLE_CLIENT_ID as string;
+// TODO
+// const APPLE_CLIENT_ID = import.meta.env.VITE_APPLE_CLIENT_ID as string;
 
 declare global {
   interface Window {
@@ -34,11 +35,12 @@ const GitHubIcon = () => (
   </svg>
 );
 
-const AppleIcon = () => (
-  <svg viewBox="0 0 24 24" width="60" height="60" fill="currentColor">
-    <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
-  </svg>
-);
+// TODO
+// const AppleIcon = () => (
+//   <svg viewBox="0 0 24 24" width="60" height="60" fill="currentColor">
+//     <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
+//   </svg>
+// );
 
 const GoogleIcon = () => (
   <svg viewBox="0 0 24 24" width="60" height="60">
@@ -61,22 +63,23 @@ const GoogleIcon = () => (
   </svg>
 );
 
-function loadAppleScript(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (window.AppleID) {
-      resolve();
-      return;
-    }
-    const script = document.createElement('script');
-    script.src =
-      'https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js';
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Failed to load Apple JS SDK'));
-    document.head.appendChild(script);
-  });
-}
+// TODO
+// function loadAppleScript(): Promise<void> {
+//   return new Promise((resolve, reject) => {
+//     if (window.AppleID) {
+//       resolve();
+//       return;
+//     }
+//     const script = document.createElement('script');
+//     script.src =
+//       'https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js';
+//     script.onload = () => resolve();
+//     script.onerror = () => reject(new Error('Failed to load Apple JS SDK'));
+//     document.head.appendChild(script);
+//   });
+// }
 
-const OAuthButtons = ({ onAppleLogin, isLoading }: OAuthButtonsProps) => {
+const OAuthButtons = (props: OAuthButtonsProps) => {
   const origin = window.location.origin;
 
   const handleGithubLogin = async () => {
@@ -97,30 +100,31 @@ const OAuthButtons = ({ onAppleLogin, isLoading }: OAuthButtonsProps) => {
     }
   };
 
-  const handleAppleLogin = async () => {
-    try {
-      await loadAppleScript();
-      if (!window.AppleID) throw new Error('Apple JS SDK not available');
-      window.AppleID.auth.init({
-        clientId: APPLE_CLIENT_ID,
-        scope: 'email',
-        redirectURI: `${origin}/login/oauth/apple/callback`,
-        usePopup: true,
-      });
-      const response = await window.AppleID.auth.signIn();
-      onAppleLogin(response.authorization.id_token);
-    } catch (error) {
-      // User cancelled or error occurred
-      console.error('Apple Sign In failed:', error);
-    }
-  };
+  // TODO
+  // const handleAppleLogin = async () => {
+  //   try {
+  //     await loadAppleScript();
+  //     if (!window.AppleID) throw new Error('Apple JS SDK not available');
+  //     window.AppleID.auth.init({
+  //       clientId: APPLE_CLIENT_ID,
+  //       scope: 'email',
+  //       redirectURI: `${origin}/login/oauth/apple/callback`,
+  //       usePopup: true,
+  //     });
+  //     const response = await window.AppleID.auth.signIn();
+  //     onAppleLogin(response.authorization.id_token);
+  //   } catch (error) {
+  //     // User cancelled or error occurred
+  //     console.error('Apple Sign In failed:', error);
+  //   }
+  // };
 
   return (
     <div className="space-y-4">
       <div className="flex justify-center gap-4">
         <button
           onClick={handleGithubLogin}
-          disabled={isLoading}
+          disabled={props.isLoading}
           title="Sign in with GitHub"
           className="cursor-pointer disabled:opacity-50"
         >
@@ -137,7 +141,7 @@ const OAuthButtons = ({ onAppleLogin, isLoading }: OAuthButtonsProps) => {
         </button> */}
         <button
           onClick={handleGoogleLogin}
-          disabled={isLoading}
+          disabled={props.isLoading}
           title="Sign in with Google"
           className="cursor-pointer disabled:opacity-50"
         >

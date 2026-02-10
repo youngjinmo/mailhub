@@ -5,8 +5,6 @@ import Footer from '@/components/Footer';
 import {
   Shield,
   ShieldCheck,
-  Mail,
-  Forward,
   ShoppingBag,
   Lock,
   Newspaper,
