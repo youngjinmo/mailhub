@@ -7,16 +7,17 @@
 
 <p align="center">
   <a href="https://private-mailhub.com">https://private-mailhub.com</a><br><br>
-  <b>Protect yout email address from untrusted sites.</b>
+  <b>Protect your email with masking<br/>Manage all your emails in one place</b>
 </p>
 <p align="center">
-  <a href="#about">About</a> · <a href="#how-it-works">How It Works</a> · <a href="#architecture">Architecture</a> · <a href="#getting-started">Getting Started</a> · <a href="#security">Security</a>
+  <a href="#about">About</a> · <a href="https://github.com/youngjinmo/mailhub/releases">Relase Notes</a> · <a href="#about">About</a> · <a href="#how-it-works">How It Works</a> · <a href="#architecture">Architecture</a> · <a href="#getting-started">Getting Started</a> · <a href="#security">Security</a>
 </p>
 <p align="center">
-  <img src="https://img.shields.io/badge/license-AGPL--3.0-blue.svg" alt="License: AGPL-3.0" />
+  <img src="https://img.shields.io/github/v/release/youngjinmo/mailhub" alt="Relase" />
   <img src="https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg" alt="Node.js" />
   <img src="https://img.shields.io/badge/TypeScript-5.x-blue.svg" alt="TypeScript" />
   <img src="https://img.shields.io/badge/NestJS-11.x-red.svg" alt="NestJS" />
+  <img src="https://img.shields.io/badge/license-AGPL--3.0-blue.svg" alt="License: AGPL-3.0" />
 </p>
 
 ---
