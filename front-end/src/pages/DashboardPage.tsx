@@ -1,33 +1,29 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import RelayEmailDashboard from '@/components/RelayEmailDashboard';
-import Unauthorized from './Unauthorized';
-import { checkAuth, getUsernameFromToken } from '@/lib/api';
+import { getUsernameFromToken, logout } from '@/lib/api';
 
 const DashboardPage = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const navigate = useNavigate();
   const [userEmail, setUserEmail] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const initAuth = async () => {
-      const isAuth = checkAuth();
-      if (isAuth) {
-        const username = await getUsernameFromToken();
-        if (username) {
-          setUserEmail(username);
-          setIsAuthenticated(true);
-        } else {
-          setIsAuthenticated(false);
-        }
+      const username = await getUsernameFromToken();
+      if (username) {
+        setUserEmail(username);
       } else {
-        setIsAuthenticated(false);
+        await logout();
+        navigate('/login', { replace: true });
       }
+      setIsLoading(false);
     };
 
     initAuth();
-  }, []);
+  }, [navigate]);
 
-  // Loading state
-  if (isAuthenticated === null) {
+  if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <p className="text-muted-foreground">Loading...</p>
@@ -35,12 +31,6 @@ const DashboardPage = () => {
     );
   }
 
-  // Not authenticated - show 401 page
-  if (!isAuthenticated) {
-    return <Unauthorized />;
-  }
-
-  // Authenticated - show dashboard
   return <RelayEmailDashboard userEmail={userEmail} />;
 };
 

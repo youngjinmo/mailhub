@@ -5,7 +5,7 @@ import Footer from '@/components/Footer';
 import UpdatePrimaryEmail from '@/components/UpdatePrimaryEmail';
 import DeactivateAccount from '@/components/DeactivateAccount';
 import OAuthManagement from '@/components/OAuthManagement';
-import { getUserInfo, checkAuth, logout } from '@/lib/api';
+import { getUserInfo, logout } from '@/lib/api';
 import type { UserInfo } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -16,18 +16,13 @@ const MyPage = () => {
 
   useEffect(() => {
     const fetchUserInfo = async () => {
-      if (!checkAuth()) {
-        navigate('/');
-        return;
-      }
-
       try {
         const info = await getUserInfo();
         setUserInfo(info);
       } catch (error) {
         console.error('Failed to fetch user info:', error);
         await logout();
-        navigate('/');
+        navigate('/login', { replace: true });
       } finally {
         setIsLoading(false);
       }

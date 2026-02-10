@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { getAdminDashboard, checkAuth, logout } from '@/lib/api';
+import { getAdminDashboard, logout } from '@/lib/api';
 import type { AdminDashboardStats } from '@/lib/api';
 
 const AdminPage = () => {
@@ -13,11 +13,6 @@ const AdminPage = () => {
 
   useEffect(() => {
     const fetchDashboard = async () => {
-      if (!checkAuth()) {
-        navigate('/');
-        return;
-      }
-
       try {
         const data = await getAdminDashboard();
         setStats(data);
@@ -27,7 +22,7 @@ const AdminPage = () => {
         } else {
           console.error('Failed to fetch admin dashboard:', error);
           await logout();
-          navigate('/');
+          navigate('/login', { replace: true });
         }
       } finally {
         setIsLoading(false);

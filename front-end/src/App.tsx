@@ -13,6 +13,7 @@ import OAuthCallbackPage from './pages/OAuthCallbackPage';
 import PrivacyPage from './pages/PrivacyPage';
 import TermsPage from './pages/TermsPage';
 import NotFound from './pages/NotFound';
+import ProtectedRoute from './components/ProtectedRoute';
 
 const queryClient = new QueryClient();
 
@@ -26,10 +27,31 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/main" element={<Index />} />
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/about" element={<AboutPage />} />
-          <Route path="/mypage" element={<MyPage />} />
-          <Route path="/admin" element={<AdminPage />} />
+          <Route
+            path="/mypage"
+            element={
+              <ProtectedRoute>
+                <MyPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <AdminPage />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/login/oauth/:provider/callback" element={<OAuthCallbackPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/terms" element={<TermsPage />} />
