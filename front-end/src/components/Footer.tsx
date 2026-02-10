@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 const Footer = () => {
   const currentYear = new Date().getFullYear();
   const appName = import.meta.env.APP_NAME || 'Mailhub';
@@ -10,12 +12,26 @@ const Footer = () => {
           © {currentYear} {appName}. All rights reserved.
         </p>
 
-        <a
-          href="mailto:contact@private-mailhub.com"
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          contact@{appDomain}
-        </a>
+        <div className="flex items-center gap-4">
+          <Link
+            to="/privacy"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Privacy Policy
+          </Link>
+          <Link
+            to="/terms"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Terms of Service
+          </Link>
+          <a
+            href={`mailto:contact@${appDomain}`}
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            contact@{appDomain}
+          </a>
+        </div>
       </div>
     </footer>
   );

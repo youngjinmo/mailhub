@@ -10,6 +10,8 @@ import AboutPage from './pages/AboutPage';
 import MyPage from './pages/MyPage';
 import AdminPage from './pages/AdminPage';
 import OAuthCallbackPage from './pages/OAuthCallbackPage';
+import PrivacyPage from './pages/PrivacyPage';
+import TermsPage from './pages/TermsPage';
 import NotFound from './pages/NotFound';
 
 const queryClient = new QueryClient();
@@ -29,6 +31,8 @@ const App = () => (
           <Route path="/mypage" element={<MyPage />} />
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/login/oauth/:provider/callback" element={<OAuthCallbackPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/terms" element={<TermsPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
