@@ -149,6 +149,13 @@ export class UsersService {
     [OAuthProvider.GOOGLE]: 'googleOAuth',
   };
 
+  private static readonly OAUTH_TOKEN_FIELD_MAP: Partial<
+    Record<OAuthProvider, keyof User>
+  > = {
+    [OAuthProvider.GITHUB]: 'githubOAuthToken',
+    [OAuthProvider.GOOGLE]: 'googleOAuthToken',
+  };
+
   async findByOAuthId(
     provider: OAuthProvider,
     oauthId: string,
@@ -163,6 +170,7 @@ export class UsersService {
     encryptedEmail: string,
     provider: OAuthProvider,
     oauthId: string,
+    encryptedToken?: string,
   ): Promise<User> {
     try {
       const email = this.proectionUtil.decrypt(encryptedEmail);
@@ -174,10 +182,14 @@ export class UsersService {
       }
 
       const field = UsersService.OAUTH_FIELD_MAP[provider];
+      const tokenField = UsersService.OAUTH_TOKEN_FIELD_MAP[provider];
       const user = this.userRepository.create({
         username: encryptedEmail,
         usernameHash,
         [field]: oauthId,
+        ...(tokenField && encryptedToken
+          ? { [tokenField]: encryptedToken }
+          : {}),
       });
 
       return await this.userRepository.save(user);
@@ -192,23 +204,44 @@ export class UsersService {
     userId: bigint,
     provider: OAuthProvider,
     oauthId: string,
+    encryptedToken?: string,
   ): Promise<void> {
     const field = UsersService.OAUTH_FIELD_MAP[provider];
+    const tokenField = UsersService.OAUTH_TOKEN_FIELD_MAP[provider];
     await this.userRepository.update(
       { id: userId },
-      { [field]: oauthId },
+      {
+        [field]: oauthId,
+        ...(tokenField && encryptedToken
+          ? { [tokenField]: encryptedToken }
+          : {}),
+      },
     );
   }
 
-  async unlinkOAuth(
-    userId: bigint,
-    provider: OAuthProvider,
-  ): Promise<void> {
+  async unlinkOAuth(userId: bigint, provider: OAuthProvider): Promise<void> {
     const field = UsersService.OAUTH_FIELD_MAP[provider];
+    const tokenField = UsersService.OAUTH_TOKEN_FIELD_MAP[provider];
     await this.userRepository.update(
       { id: userId },
-      { [field]: null },
+      {
+        [field]: null,
+        ...(tokenField ? { [tokenField]: null } : {}),
+      },
     );
+  }
+
+  async getOAuthToken(
+    userId: bigint,
+    provider: OAuthProvider,
+  ): Promise<string | null> {
+    const tokenField = UsersService.OAUTH_TOKEN_FIELD_MAP[provider];
+    if (!tokenField) return null;
+
+    const user = await this.findById(userId);
+    if (!user) return null;
+
+    return (user[tokenField] as string) || null;
   }
 
   async requestUsernameChange(

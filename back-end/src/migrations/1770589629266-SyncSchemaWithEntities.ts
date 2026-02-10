@@ -11,9 +11,7 @@ export class SyncSchemaWithEntities1770589629266 implements MigrationInterface {
     await queryRunner.query(
       `DROP INDEX \`idx_relay_address\` ON \`relay_emails\``,
     );
-    await queryRunner.query(
-      `DROP INDEX \`UQ_username_hash\` ON \`users\``,
-    );
+    await queryRunner.query(`DROP INDEX \`UQ_username_hash\` ON \`users\``);
 
     // Modify column types safely (MODIFY instead of DROP+ADD to preserve data)
     await queryRunner.query(

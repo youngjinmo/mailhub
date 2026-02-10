@@ -174,7 +174,9 @@ const RelayEmailDashboard = ({ userEmail }: RelayEmailDashboardProps) => {
                     <PaginationItem>
                       <PaginationPrevious
                         onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                        className={safePage <= 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                        className={
+                          safePage <= 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'
+                        }
                       />
                     </PaginationItem>
 
@@ -199,7 +201,11 @@ const RelayEmailDashboard = ({ userEmail }: RelayEmailDashboardProps) => {
                     <PaginationItem>
                       <PaginationNext
                         onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                        className={safePage >= totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                        className={
+                          safePage >= totalPages
+                            ? 'pointer-events-none opacity-50'
+                            : 'cursor-pointer'
+                        }
                       />
                     </PaginationItem>
                   </PaginationContent>

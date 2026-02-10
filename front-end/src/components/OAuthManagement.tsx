@@ -70,11 +70,7 @@ const OAuthManagement = ({ userInfo, onUpdate }: OAuthManagementProps) => {
           .map(({ provider }) => (
             <div key={provider} className="flex items-center justify-between">
               <span className="text-sm font-medium">{providerLabels[provider]} Login</span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setUnlinkProvider(provider)}
-              >
+              <Button variant="outline" size="sm" onClick={() => setUnlinkProvider(provider)}>
                 Unlink
               </Button>
             </div>

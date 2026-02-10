@@ -398,9 +398,9 @@ export class RelayEmailsService {
 
       // Send email via SES (HTML only)
       await this.sendMailService.sendMail({
-        to: primaryEmailAddress,        // primary email address
-        from,                           // relay email address with display name
-        resentFrom: relayEmailAddress,  // relay email address
+        to: primaryEmailAddress, // primary email address
+        from, // relay email address with display name
+        resentFrom: relayEmailAddress, // relay email address
         replyTo: originalSenderAddress, // original sender email address
         subject,
         htmlBody,
@@ -409,7 +409,6 @@ export class RelayEmailsService {
 
       // Increment forward count
       await this.incrementForwardCount(relayEmailAddress);
-      
     } catch (error) {
       const fromAddress = mail?.from?.text ?? 'unknown';
       this.logger.error(

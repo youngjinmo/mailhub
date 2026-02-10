@@ -760,9 +760,7 @@ export async function oauthLoginGoogle(
 /**
  * OAuth login with Apple
  */
-export async function oauthLoginApple(
-  idToken: string,
-): Promise<{ accessToken: string }> {
+export async function oauthLoginApple(idToken: string): Promise<{ accessToken: string }> {
   const response = await fetch(`${API_BASE_URL}/api/auth/oauth/apple`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -772,9 +770,7 @@ export async function oauthLoginApple(
   const apiResponse: ApiResponse<{ accessToken: string }> = await response.json();
 
   if (!response.ok || apiResponse.result === 'fail') {
-    throw new Error(
-      typeof apiResponse.data === 'string' ? apiResponse.data : 'Apple login failed',
-    );
+    throw new Error(typeof apiResponse.data === 'string' ? apiResponse.data : 'Apple login failed');
   }
 
   return apiResponse.data;
@@ -784,7 +780,7 @@ export async function oauthLoginApple(
  * Unlink OAuth provider from current account
  */
 export async function unlinkOAuth(provider: OAuthProvider): Promise<void> {
-  const response = await authenticatedFetch(`${API_BASE_URL}/api/users/unlink-oauth`, {
+  const response = await authenticatedFetch(`${API_BASE_URL}/api/auth/oauth/unlink`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ provider }),

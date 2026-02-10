@@ -135,15 +135,14 @@ const OAuthButtons = ({ onAppleLogin, isLoading }: OAuthButtonsProps) => {
         >
           <AppleIcon />
         </button> */}
-        {/* TODO: Enable Google Login */}
-        {/* <button
+        <button
           onClick={handleGoogleLogin}
           disabled={isLoading}
           title="Sign in with Google"
           className="cursor-pointer disabled:opacity-50"
         >
           <GoogleIcon />
-        </button> */}
+        </button>
       </div>
       <div className="relative">
         <div className="absolute inset-0 flex items-center">

@@ -18,7 +18,12 @@ import {
   OAuthGoogleDto,
   OAuthAppleDto,
 } from './dto/oauth-login.dto';
+import { UnlinkOAuthDto } from '../users/dto/unlink-oauth.dto';
 import { Public } from '../common/decorators/public.decorator';
+import {
+  CurrentUser,
+  type CurrentUserPayload,
+} from '../common/decorators/current-user.decorator';
 import { LoginDto } from './dto/login.dto';
 
 @Controller('auth')
@@ -62,18 +67,14 @@ export class AuthController {
   @Public()
   @Get('oauth/github/url')
   @HttpCode(HttpStatus.OK)
-  getGithubAuthUrl(
-    @Query('redirectUri') redirectUri: string,
-  ): { url: string } {
+  getGithubAuthUrl(@Query('redirectUri') redirectUri: string): { url: string } {
     return this.oauthService.getGithubAuthUrl(redirectUri);
   }
 
   @Public()
   @Get('oauth/google/url')
   @HttpCode(HttpStatus.OK)
-  getGoogleAuthUrl(
-    @Query('redirectUri') redirectUri: string,
-  ): { url: string } {
+  getGoogleAuthUrl(@Query('redirectUri') redirectUri: string): { url: string } {
     return this.oauthService.getGoogleAuthUrl(redirectUri);
   }
 
@@ -96,5 +97,15 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async oauthApple(@Body() dto: OAuthAppleDto): Promise<AuthResponseDto> {
     return this.oauthService.loginWithApple(dto.idToken);
+  }
+
+  @Post('oauth/unlink')
+  @HttpCode(HttpStatus.OK)
+  async unlinkOAuth(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: UnlinkOAuthDto,
+  ): Promise<{ message: string }> {
+    await this.oauthService.unlinkOAuth(user.userId, dto.provider);
+    return { message: `${dto.provider} OAuth unlinked successfully` };
   }
 }

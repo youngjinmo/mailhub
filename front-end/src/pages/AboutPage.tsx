@@ -36,8 +36,7 @@ const AboutPage = () => {
               </div>
               <h3 className="font-semibold">Encrypted Storage</h3>
               <p className="text-sm text-muted-foreground">
-                Your email address is encrypted on our servers. Nobody can access your real
-                address.
+                Your email address is encrypted on our servers. Nobody can access your real address.
               </p>
             </div>
 
@@ -47,8 +46,8 @@ const AboutPage = () => {
               </div>
               <h3 className="font-semibold">Centralized Management</h3>
               <p className="text-sm text-muted-foreground">
-                Manage all your mail subscriptions in one place. No need to unsubscribe from
-                each platform individually.
+                Manage all your mail subscriptions in one place. No need to unsubscribe from each
+                platform individually.
               </p>
             </div>
 

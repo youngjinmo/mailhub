@@ -61,7 +61,9 @@ const AdminPage = () => {
         <main className="flex-1 container mx-auto px-4 py-8">
           <div className="text-center">
             <h1 className="text-2xl font-bold">Access Denied</h1>
-            <p className="mt-2 text-muted-foreground">You do not have permission to view this page.</p>
+            <p className="mt-2 text-muted-foreground">
+              You do not have permission to view this page.
+            </p>
           </div>
         </main>
         <Footer />

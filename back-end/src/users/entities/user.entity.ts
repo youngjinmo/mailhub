@@ -103,6 +103,22 @@ export class User {
   })
   googleOAuth: string | null;
 
+  @Column({
+    name: 'gh_oauth_token',
+    type: 'varchar',
+    length: 512,
+    nullable: true,
+  })
+  githubOAuthToken: string | null;
+
+  @Column({
+    name: 'goog_oauth_token',
+    type: 'varchar',
+    length: 512,
+    nullable: true,
+  })
+  googleOAuthToken: string | null;
+
   @OneToMany(() => RelayEmail, (relayEmail) => relayEmail.user)
   relayEmails: RelayEmail[];
 }

@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  UnauthorizedException,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { TokenService } from './jwt/token.service';
 import { CacheService } from '../cache/cache.service';
@@ -52,8 +48,9 @@ export class OAuthService {
     redirectUri: string,
   ): Promise<AuthResponseDto> {
     const clientId = this.customEnvService.get<string>('GITHUB_CLIENT_ID');
-    const clientSecret =
-      this.customEnvService.get<string>('GITHUB_CLIENT_SECRET');
+    const clientSecret = this.customEnvService.get<string>(
+      'GITHUB_CLIENT_SECRET',
+    );
 
     // Exchange code for access token
     const tokenResponse = await fetch(
@@ -118,7 +115,13 @@ export class OAuthService {
       );
     }
 
-    return this.processOAuthUser(email, OAuthProvider.GITHUB, oauthId);
+    const encryptedToken = this.protectionUtil.encrypt(tokenData.access_token);
+    return this.processOAuthUser(
+      email,
+      OAuthProvider.GITHUB,
+      oauthId,
+      encryptedToken,
+    );
   }
 
   async loginWithGoogle(
@@ -126,8 +129,9 @@ export class OAuthService {
     redirectUri: string,
   ): Promise<AuthResponseDto> {
     const clientId = this.customEnvService.get<string>('GOOGLE_CLIENT_ID');
-    const clientSecret =
-      this.customEnvService.get<string>('GOOGLE_CLIENT_SECRET');
+    const clientSecret = this.customEnvService.get<string>(
+      'GOOGLE_CLIENT_SECRET',
+    );
 
     // Exchange code for tokens
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
@@ -161,7 +165,15 @@ export class OAuthService {
     const email = idTokenPayload.email as string;
     const oauthId = idTokenPayload.sub as string;
 
-    return this.processOAuthUser(email, OAuthProvider.GOOGLE, oauthId);
+    const encryptedToken = tokenData.refresh_token
+      ? this.protectionUtil.encrypt(tokenData.refresh_token)
+      : undefined;
+    return this.processOAuthUser(
+      email,
+      OAuthProvider.GOOGLE,
+      oauthId,
+      encryptedToken,
+    );
   }
 
   async loginWithApple(idToken: string): Promise<AuthResponseDto> {
@@ -184,18 +196,34 @@ export class OAuthService {
     email: string,
     provider: OAuthProvider,
     oauthId: string,
+    encryptedToken?: string,
   ): Promise<AuthResponseDto> {
     // 1. Find user by OAuth ID
     let user = await this.usersService.findByOAuthId(provider, oauthId);
 
-    if (!user) {
+    if (user) {
+      // Update stored token on re-login
+      if (encryptedToken) {
+        await this.usersService.linkOAuth(
+          user.id,
+          provider,
+          oauthId,
+          encryptedToken,
+        );
+      }
+    } else {
       // 2. Find user by email hash
       const emailHash = this.protectionUtil.hash(email);
       user = await this.usersService.findByUsernameHash(emailHash);
 
       if (user) {
         // Link OAuth to existing user
-        await this.usersService.linkOAuth(user.id, provider, oauthId);
+        await this.usersService.linkOAuth(
+          user.id,
+          provider,
+          oauthId,
+          encryptedToken,
+        );
       } else {
         // 3. Create new user
         const encryptedEmail = this.protectionUtil.encrypt(email);
@@ -203,6 +231,7 @@ export class OAuthService {
           encryptedEmail,
           provider,
           oauthId,
+          encryptedToken,
         );
       }
     }
@@ -222,6 +251,81 @@ export class OAuthService {
     await this.cacheService.setSession(accessToken, refreshToken);
 
     return { accessToken };
+  }
+
+  async unlinkOAuth(userId: bigint, provider: OAuthProvider): Promise<void> {
+    // 1. Retrieve stored encrypted token
+    const encryptedToken = await this.usersService.getOAuthToken(
+      userId,
+      provider,
+    );
+
+    // 2. Revoke token at provider (best-effort)
+    if (encryptedToken) {
+      const token = this.protectionUtil.decrypt(encryptedToken);
+      this.revokeOAuthToken(provider, token)
+        .then(() => {
+          this.logger.log(`Success to revoke ${provider}`);
+        })
+        .catch((err) => {
+          this.logger.warn(
+            `Failed to revoke ${provider} token for user ${userId}: ${err.message}`,
+          );
+        });
+    }
+
+    // 3. Clear OAuth ID and token from DB
+    await this.usersService.unlinkOAuth(userId, provider);
+  }
+
+  private async revokeOAuthToken(
+    provider: OAuthProvider,
+    token: string,
+  ): Promise<void> {
+    if (provider === OAuthProvider.GITHUB) {
+      const clientId = this.customEnvService.get<string>('GITHUB_CLIENT_ID');
+      const clientSecret = this.customEnvService.get<string>(
+        'GITHUB_CLIENT_SECRET',
+      );
+      const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString(
+        'base64',
+      );
+
+      const response = await fetch(
+        `https://api.github.com/applications/${clientId}/token`,
+        {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Basic ${credentials}`,
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ access_token: token }),
+        },
+      );
+
+      if (!response.ok && response.status !== 422) {
+        throw new Error(
+          `GitHub token revocation failed with status ${response.status}`,
+        );
+      }
+    } else if (provider === OAuthProvider.GOOGLE) {
+      const response = await fetch(
+        `https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(token)}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        },
+      );
+
+      if (!response.ok && response.status !== 400) {
+        throw new Error(
+          `Google token revocation failed with status ${response.status}`,
+        );
+      }
+    }
   }
 
   private decodeJwtPayload(token: string): Record<string, unknown> | null {
@@ -247,9 +351,7 @@ export class OAuthService {
       const kid = header.kid;
 
       // Fetch Apple's JWKS
-      const jwksResponse = await fetch(
-        'https://appleid.apple.com/auth/keys',
-      );
+      const jwksResponse = await fetch('https://appleid.apple.com/auth/keys');
       const jwks = await jwksResponse.json();
       const key = jwks.keys.find((k: AppleJWK) => k.kid === kid);
 
