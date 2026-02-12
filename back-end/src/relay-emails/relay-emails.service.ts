@@ -159,7 +159,6 @@ export class RelayEmailsService {
       const messages = await this.sqsService.receiveMessages(10);
 
       if (messages.length === 0) {
-        this.logger.log('No exists messages in the queue');
         return;
       }
 

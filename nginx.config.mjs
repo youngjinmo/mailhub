@@ -31,6 +31,13 @@ server {
     root /var/www/private-mailhub/front-end/dist;
     index index.html;
 
+    # Block PHP file requests (bot scanning protection)
+    location ~* \.php$ {
+        access_log off;
+        log_not_found off;
+        return 444;
+    }
+
     # Frontend static files
     location / {
         try_files $uri $uri/ /index.html;
@@ -98,6 +105,13 @@ server {
      # Root and index for frontend
      root /var/www/private-mailhub/front-end/dist;
      index index.html;
+
+     # Block PHP file requests (bot scanning protection)
+     location ~* \.php$ {
+         access_log off;
+         log_not_found off;
+         return 444;
+     }
 
      # Frontend static files
      location / {
