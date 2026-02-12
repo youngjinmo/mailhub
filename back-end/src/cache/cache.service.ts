@@ -131,6 +131,35 @@ export class CacheService {
     return `relay:mail:${relayEmail}`;
   }
 
+  // Reply Mapping Cache Operations
+
+  async setReplyMappingCache(
+    replyLocalPart: string,
+    originalSender: string,
+    relayEmailAddress: string,
+  ): Promise<void> {
+    const key = this.getReplyMappingCacheKey(replyLocalPart);
+    await this.cacheRepository.set(
+      key,
+      { originalSender, relayEmailAddress },
+      86400000, // 24 hours TTL
+    );
+  }
+
+  async getReplyMappingCache(
+    replyLocalPart: string,
+  ): Promise<{ originalSender: string; relayEmailAddress: string } | null> {
+    const key = this.getReplyMappingCacheKey(replyLocalPart);
+    return await this.cacheRepository.get<{
+      originalSender: string;
+      relayEmailAddress: string;
+    }>(key);
+  }
+
+  private getReplyMappingCacheKey(replyLocalPart: string): string {
+    return `reply-mapping:${replyLocalPart}`;
+  }
+
   // Username Change Operations
 
   async setUsernameChangeData(

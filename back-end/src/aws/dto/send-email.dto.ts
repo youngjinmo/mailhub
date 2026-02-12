@@ -56,6 +56,14 @@ export class SendEmailDto {
   @Type(() => EmailAttachment)
   attachments?: EmailAttachment[];
 
+  @IsOptional()
+  @IsString()
+  inReplyTo?: string;
+
+  @IsOptional()
+  @IsString()
+  references?: string;
+
   /**
    * @deprecated Use htmlBody and/or textBody instead for better email client compatibility
    */

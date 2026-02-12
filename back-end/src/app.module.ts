@@ -12,6 +12,7 @@ import { AwsModule } from './aws/aws.module';
 import { AdminModule } from './admin/admin.module';
 import { User } from './users/entities/user.entity';
 import { RelayEmail } from './relay-emails/entities/relay-email.entity';
+import { ReplyMapping } from './reply-mappings/entities/reply-mapping.entity';
 import { AuthGuard } from './common/guards/auth.guard';
 
 @Module({
@@ -27,7 +28,7 @@ import { AuthGuard } from './common/guards/auth.guard';
       database: process.env.DATABASE_NAME,
       username: process.env.DATABASE_USERNAME,
       password: process.env.DATABASE_PASSWORD,
-      entities: [User, RelayEmail],
+      entities: [User, RelayEmail, ReplyMapping],
       synchronize: false,
       logging: process.env.NODE_ENV === 'production',
     }),
