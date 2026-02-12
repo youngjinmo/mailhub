@@ -36,6 +36,7 @@
       "Bash(gh run list:*)",
       "Bash(gh run view:*)",
       "Bash(gh secret:*)"
+      "Bash(npm test:*)"
     ]
   }
 }

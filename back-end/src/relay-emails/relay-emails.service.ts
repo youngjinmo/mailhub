@@ -21,6 +21,7 @@ import { generateRandomRelayUsername } from 'src/common/utils/relay-email.util';
 import { User } from 'src/users/entities/user.entity';
 import { SubscriptionTier } from 'src/common/enums/subscription-tier.enum';
 import { UserRole } from 'src/users/user.enums';
+import { ReplyMappingService } from 'src/reply-mappings/reply-mapping.service';
 
 @Injectable()
 export class RelayEmailsService {
@@ -36,6 +37,7 @@ export class RelayEmailsService {
     private readonly sendMailService: SendMailService,
     private readonly cacheService: CacheService,
     private readonly encryptionUtil: ProtectionUtil,
+    private readonly replyMappingService: ReplyMappingService,
   ) {}
 
   async generateRelayEmailAddress(user: User): Promise<RelayEmail> {
@@ -259,12 +261,27 @@ export class RelayEmailsService {
       const parsedMail = await simpleParser(emailBuffer);
       const parseElapsed = Date.now() - parseStartTime;
 
-      // Extract relay address (to address)
-      const relayEmail = this.getOriginalRecipient(parsedMail);
-      if (!relayEmail) {
+      // Extract recipient address (to address)
+      const recipientEmail = this.getOriginalRecipient(parsedMail);
+      if (!recipientEmail) {
         this.logger.warn('No recipient address found in email');
         return;
       }
+
+      // Check if this is a reply to a reply-mapping address (Flow 2)
+      const recipientLocalPart = recipientEmail.split('@')[0];
+      if (recipientLocalPart.startsWith('reply-')) {
+        await this.handleReplyEmail(recipientLocalPart, parsedMail);
+
+        const totalElapsed = Date.now() - startTime;
+        this.logger.log(
+          `Reply email processed in ${totalElapsed}ms (S3: ${s3Elapsed}ms, Parse: ${parseElapsed}ms) - ${key}`,
+        );
+        return;
+      }
+
+      // Flow 1: Normal forwarding
+      const relayEmail = recipientEmail;
 
       // Find relay email entity from database
       const dbStartTime = Date.now();
@@ -292,9 +309,36 @@ export class RelayEmailsService {
         relayEmailEntity.primaryEmail,
       );
 
+      // Get original sender for reply mapping
+      const originalSenderAddress = this.getSender(parsedMail);
+
+      // Create or find reply address for this sender + relay combination
+      let replyAddress: string | undefined;
+      if (originalSenderAddress) {
+        try {
+          replyAddress =
+            await this.replyMappingService.findOrCreateReplyAddress(
+              relayEmailEntity.id,
+              originalSenderAddress,
+              relayEmailEntity.userId,
+            );
+        } catch (error) {
+          this.logger.error(
+            `Failed to create reply mapping: ${error.message}`,
+            error.stack,
+          );
+          // Continue forwarding without reply masking
+        }
+      }
+
       // Forward email to primary address
       const forwardStartTime = Date.now();
-      await this.forwardEmail(primaryEmail, relayEmail, parsedMail);
+      await this.forwardEmail(
+        primaryEmail,
+        relayEmail,
+        parsedMail,
+        replyAddress,
+      );
 
       // Measure performance
       const forwardElapsed = Date.now() - forwardStartTime;
@@ -317,6 +361,7 @@ export class RelayEmailsService {
     primaryEmailAddress: string,
     relayEmailAddress: string,
     mail: ParsedMail,
+    replyAddress?: string,
   ) {
     try {
       // Parse info from mail
@@ -327,7 +372,9 @@ export class RelayEmailsService {
         throw new BadRequestException('Sender address not found');
       }
 
-      const from = `${originalSenderAddress} [via Mailhub] <${relayEmailAddress}>`;
+      // Use reply address in From if available, otherwise use relay address
+      const fromAddress = replyAddress || relayEmailAddress;
+      const from = `${originalSenderAddress} [via Mailhub] <${fromAddress}>`;
 
       // Get app configuration
       const appName =
@@ -395,12 +442,15 @@ export class RelayEmailsService {
         );
       }
 
+      // Use reply address for Reply-To so user's reply goes through masking
+      const replyTo = replyAddress || originalSenderAddress;
+
       // Send email via SES (HTML only)
       await this.sendMailService.sendMail({
         to: primaryEmailAddress, // primary email address
-        from, // relay email address with display name
-        resentFrom: relayEmailAddress, // relay email address
-        replyTo: originalSenderAddress, // original sender email address
+        from, // display name with reply or relay address
+        resentFrom: relayEmailAddress, // relay email address (always the original relay)
+        replyTo, // reply address for masking, fallback to original sender
         subject,
         htmlBody,
         attachments: attachments.length > 0 ? attachments : undefined,
@@ -417,6 +467,84 @@ export class RelayEmailsService {
 
       return;
     }
+  }
+
+  /**
+   * Handle incoming reply emails (Flow 2: user replies via reply-xxx address)
+   */
+  private async handleReplyEmail(
+    replyLocalPart: string,
+    mail: ParsedMail,
+  ): Promise<void> {
+    const mapping =
+      await this.replyMappingService.resolveReplyMapping(replyLocalPart);
+
+    if (!mapping) {
+      this.logger.warn(
+        `No reply mapping found for: ${replyLocalPart}, dropping email`,
+      );
+      return;
+    }
+
+    await this.sendReplyEmail(
+      mapping.originalSender,
+      mapping.relayEmailAddress,
+      mail,
+    );
+
+    // Update last_used_at
+    await this.replyMappingService.updateLastUsedAt(replyLocalPart);
+  }
+
+  /**
+   * Send reply email from relay address to original sender
+   */
+  private async sendReplyEmail(
+    originalSender: string,
+    relayEmailAddress: string,
+    mail: ParsedMail,
+  ): Promise<void> {
+    try {
+      const subject = mail?.subject || '(No Subject)';
+
+      // Preserve In-Reply-To and References headers for threading
+      const inReplyTo = this.getHeaderValue(mail, 'in-reply-to');
+      const references = this.getHeaderValue(mail, 'references');
+
+      // Parse body - pass through without forwarding header
+      const htmlBody = mail?.html || undefined;
+      const textBody = mail?.text || undefined;
+
+      // Parse attachments
+      const attachments = this.parseAttachments(mail);
+
+      // Send from relay address to original sender
+      await this.sendMailService.sendMail({
+        to: originalSender,
+        from: relayEmailAddress,
+        subject,
+        htmlBody: htmlBody || undefined,
+        textBody: textBody || undefined,
+        inReplyTo: inReplyTo || undefined,
+        references: references || undefined,
+        attachments: attachments.length > 0 ? attachments : undefined,
+      });
+
+      this.logger.log(
+        `Reply email sent from ${relayEmailAddress} to ${originalSender}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to send reply email to ${originalSender}: ${(error as Error).message}`,
+        (error as Error).stack,
+      );
+    }
+  }
+
+  private getHeaderValue(mail: ParsedMail, headerName: string): string | null {
+    const value = mail.headers.get(headerName);
+    if (!value) return null;
+    return typeof value === 'string' ? value : JSON.stringify(value);
   }
 
   /**

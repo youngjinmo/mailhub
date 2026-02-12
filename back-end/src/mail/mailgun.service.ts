@@ -43,6 +43,14 @@ export class MailgunService {
           mailOptions.headers['Reply-To'] = dto.replyTo;
         }
 
+        if (dto.inReplyTo) {
+          mailOptions.headers['In-Reply-To'] = dto.inReplyTo;
+        }
+
+        if (dto.references) {
+          mailOptions.headers['References'] = dto.references;
+        }
+
         if (dto.htmlBody) {
           mailOptions.html = dto.htmlBody;
         }
@@ -126,6 +134,14 @@ export class MailgunService {
         params.append('h:Reply-To', dto.replyTo);
       }
 
+      if (dto.inReplyTo) {
+        params.append('h:In-Reply-To', dto.inReplyTo);
+      }
+
+      if (dto.references) {
+        params.append('h:References', dto.references);
+      }
+
       // Add HTML body if present
       if (dto.htmlBody) {
         params.append('html', dto.htmlBody);
@@ -170,11 +186,6 @@ export class MailgunService {
       this.logger.log(`Email sent successfully, messageId=${result.id}`);
     } catch (error) {
       this.logger.error(`Failed to send email, error=%o`, error);
-
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-
       throw error;
     }
   }

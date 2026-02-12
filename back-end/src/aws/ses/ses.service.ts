@@ -61,7 +61,24 @@ export class SesService {
       from: dto.from,
       to: dto.to,
       subject: dto.subject,
+      headers: {},
     };
+
+    if (dto.resentFrom) {
+      mailOptions.headers['Resent-From'] = dto.resentFrom;
+    }
+
+    if (dto.replyTo) {
+      mailOptions.headers['Reply-To'] = dto.replyTo;
+    }
+
+    if (dto.inReplyTo) {
+      mailOptions.headers['In-Reply-To'] = dto.inReplyTo;
+    }
+
+    if (dto.references) {
+      mailOptions.headers['References'] = dto.references;
+    }
 
     // Add HTML body if present
     if (dto.htmlBody) {
@@ -127,6 +144,22 @@ export class SesService {
   private generateCommand(dto: SendEmailDto) {
     // Build email body - support both new (htmlBody/textBody) and legacy (body) formats
     const bodyConfig: any = {};
+
+    if (dto.resentFrom) {
+      bodyConfig.append('h:Resent-From', dto.resentFrom);
+    }
+
+    if (dto.replyTo) {
+      bodyConfig.append('h:Reply-To', dto.replyTo);
+    }
+
+    if (dto.inReplyTo) {
+      bodyConfig.append('h:In-Reply-To', dto.inReplyTo);
+    }
+
+    if (dto.references) {
+      bodyConfig.append('h:References', dto.references);
+    }
 
     if (dto.htmlBody) {
       bodyConfig.Html = {
