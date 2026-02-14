@@ -47,9 +47,9 @@ const AboutPage = () => {
               <p>
                 Your email address is encrypted before it is stored. We use{' '}
                 <span className="font-medium text-foreground">AES-256 and SHA-256</span> encryption
-                from the client to the server, ensuring that no one — not even with database
-                access — can identify who uses which email address. Our entire codebase is open on
-                GitHub so you can see exactly how your data is handled.
+                from the client to the server, ensuring that no one — not even with database access
+                — can identify who uses which email address. Our entire codebase is open on GitHub
+                so you can see exactly how your data is handled.
               </p>
 
               <p>
