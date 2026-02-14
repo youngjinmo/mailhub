@@ -99,8 +99,7 @@ flowchart TD
 | 3 | **Amazon SQS** | Queues the S3 object key for asynchronous processing |
 | 4 | **SQS Poller** | NestJS worker polls SQS every 30 seconds via long polling |
 | 5 | **Email Parser** | Retrieves encrypted email from S3, decrypts, and extracts metadata |
-| 6 | **Relay Resolver** | Looks up the relay address in MySQL to find the user's primary email |
-| 7 | **Mailgun API** | Forwards the processed email to the user's real inbox |
+| 6 | **Mailgun API**  | Forwards the processed email to the user's real inbox        |
 
 <br>
 
@@ -183,11 +182,10 @@ Security audits and responsible disclosure are welcome. If you discover a vulner
 
 # Roadmap
 
+- [ ] Reply-Relay function: fully mask email address when reply
+- [ ] Email worker switching to Lambda for cost efficiency
 - [ ] AI-powered email summarization
-- [ ] Passwordless authentication integration
-- [ ] Enhanced spam detection with machine learning
-- [ ] Self-hosted deployment guide (Docker)
-- [ ] Browser extension for one-click relay address generation
+- [ ] Browser extension/Mobiles apps
 
 <br>
 
