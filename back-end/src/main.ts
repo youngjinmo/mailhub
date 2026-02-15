@@ -12,43 +12,51 @@ BigInt.prototype['toJSON'] = function () {
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const isWorker = process.env.WORKER_MODE === 'true';
 
-  // Global prefix for all routes
-  app.setGlobalPrefix('api');
+  if (!isWorker) {
+    // Web server mode
+    // Global prefix for all routes
+    app.setGlobalPrefix('api');
 
-  // CORS configuration
-  app.enableCors({
-    origin: process.env.CORS_ORIGINS?.split(',') || [
-      'http://localhost:3000',
-      'http://localhost:8080',
-    ],
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-  });
+    // CORS configuration
+    app.enableCors({
+      origin: process.env.CORS_ORIGINS?.split(',') || [
+        'http://localhost:3000',
+        'http://localhost:8080',
+      ],
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    });
 
-  // Cookie parser middleware
-  app.use(cookieParser());
+    // Cookie parser middleware
+    app.use(cookieParser());
 
-  // Global validation pipe
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
-  );
+    // Global validation pipe
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
+    );
 
-  // Global exception filter
-  app.useGlobalFilters(new HttpExceptionFilter());
+    // Global exception filter
+    app.useGlobalFilters(new HttpExceptionFilter());
 
-  // Global response transformation interceptor
-  app.useGlobalInterceptors(new TransformInterceptor());
+    // Global response transformation interceptor
+    app.useGlobalInterceptors(new TransformInterceptor());
 
-  const port = process.env.PORT || 8080;
-  await app.listen(port);
+    const port = process.env.PORT || 8080;
+    await app.listen(port);
 
-  console.log(`🚀 Application is running on: http://localhost:${port}/api`);
+    console.log(`🚀 Web Server is running on: http://localhost:${port}/api`);
+  } else {
+    // Worker mode (polling only)
+    await app.init();
+    console.log(`⚙️  Worker started - SQS polling enabled`);
+  }
 }
 
 bootstrap().catch((err) => {
