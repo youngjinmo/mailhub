@@ -1,0 +1,37 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /var/www/private-mailhub
+
+            # Pull latest code
+            sudo git pull main
+
+            # Build front-end
+            cd front-end
+            sudo npm ci
+            sudo npm run build
+
+            # Build back-end
+            cd ../back-end
+            sudo npm ci
+            sudo npm run build
+
+            # Reload PM2 processes
+            cd ..
+            pm2 reload all
