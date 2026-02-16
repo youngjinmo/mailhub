@@ -5,6 +5,9 @@
   "license": "AGPL-3.0",
   "scripts": {
     "build": "nest build && eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+    "build:lambda": "tsc -p tsconfig.lambda.json",
+    "clean:lambda": "rm -rf dist-lambda",
+    "prebuild:lambda": "npm run clean:lambda",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
@@ -52,6 +55,7 @@
     "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.1",
+    "@types/aws-lambda": "^8.10.160",
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",

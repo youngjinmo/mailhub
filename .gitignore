@@ -30,6 +30,7 @@ Thumbs.db
 # Frontend - Node
 **/node_modules/
 **/dist/
+# **/dist-lambda/
 **/dist-ssr/
 **/.nuxt/
 **/.output/
@@ -69,3 +70,8 @@ coverage/
 
 # AWS
 *.pem
+
+# CDK
+# **/cdk.out/
+**/.env
+!**/.env.example

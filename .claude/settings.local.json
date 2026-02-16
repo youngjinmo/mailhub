@@ -36,6 +36,11 @@
       "Bash(gh run list:*)",
       "Bash(gh run view:*)",
       "Bash(gh secret:*)"
+      "Bash(aws sts get-caller-identity:*)",
+      "Bash(export AWS_REGION=us-east-1:*)",
+      "Bash(aws ec2 describe-instances:*)",
+      "Bash(aws rds describe-db-instances:*)",
+      "Bash(aws ec2 describe-vpcs:*)"
     ]
   }
 }

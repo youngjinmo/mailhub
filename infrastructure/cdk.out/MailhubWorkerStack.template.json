@@ -1,0 +1,385 @@
+{
+ "Description": "Mailhub SQS Worker Lambda - Email processing worker",
+ "Resources": {
+  "EmailWorkerServiceRoleB01A4F9E": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "MailhubWorkerStack/EmailWorker/ServiceRole/Resource"
+   }
+  },
+  "EmailWorkerServiceRoleDefaultPolicy0316A11C": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "s3:GetObject",
+        "s3:GetObjectVersion"
+       ],
+       "Effect": "Allow",
+       "Resource": "arn:aws:s3:::private-mailhub-bucket/*"
+      },
+      {
+       "Action": [
+        "ses:SendEmail",
+        "ses:SendRawEmail"
+       ],
+       "Effect": "Allow",
+       "Resource": "*"
+      },
+      {
+       "Action": [
+        "sqs:ChangeMessageVisibility",
+        "sqs:DeleteMessage",
+        "sqs:GetQueueAttributes",
+        "sqs:GetQueueUrl",
+        "sqs:ReceiveMessage"
+       ],
+       "Effect": "Allow",
+       "Resource": "arn:aws:sqs:us-east-1:584669670737:Private-MailHub-incoming-queue"
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "EmailWorkerServiceRoleDefaultPolicy0316A11C",
+    "Roles": [
+     {
+      "Ref": "EmailWorkerServiceRoleB01A4F9E"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "MailhubWorkerStack/EmailWorker/ServiceRole/DefaultPolicy/Resource"
+   }
+  },
+  "EmailWorker9F0FF8B3": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-584669670737-us-east-1",
+     "S3Key": "a5bbaa22c8ed0bc0fab8b3ec634879028981e79719b28a57034d28d34cc4c3db.zip"
+    },
+    "Environment": {
+     "Variables": {
+      "NODE_ENV": "production",
+      "DATABASE_HOST": "",
+      "DATABASE_PORT": "3306",
+      "DATABASE_NAME": "",
+      "DATABASE_USERNAME": "",
+      "DATABASE_PASSWORD": "",
+      "REDIS_HOST": "",
+      "REDIS_PORT": "6379",
+      "REDIS_TTL": "3600",
+      "AWS_S3_EMAIL_BUCKET": "private-mailhub-bucket",
+      "AWS_SES_FROM_EMAIL": "",
+      "APP_NAME": "Mailhub",
+      "APP_DOMAIN": "private-mailhub.com",
+      "ENCRYPTION_KEY": ""
+     }
+    },
+    "FunctionName": "mailhub-email-worker",
+    "Handler": "lambda/sqs-worker.handler",
+    "MemorySize": 512,
+    "Role": {
+     "Fn::GetAtt": [
+      "EmailWorkerServiceRoleB01A4F9E",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs18.x",
+    "Timeout": 60
+   },
+   "DependsOn": [
+    "EmailWorkerServiceRoleDefaultPolicy0316A11C",
+    "EmailWorkerServiceRoleB01A4F9E"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "MailhubWorkerStack/EmailWorker/Resource",
+    "aws:asset:path": "asset.a5bbaa22c8ed0bc0fab8b3ec634879028981e79719b28a57034d28d34cc4c3db",
+    "aws:asset:is-bundled": false,
+    "aws:asset:property": "Code"
+   }
+  },
+  "EmailWorkerLogRetentionEFA2933E": {
+   "Type": "Custom::LogRetention",
+   "Properties": {
+    "ServiceToken": {
+     "Fn::GetAtt": [
+      "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+      "Arn"
+     ]
+    },
+    "LogGroupName": {
+     "Fn::Join": [
+      "",
+      [
+       "/aws/lambda/",
+       {
+        "Ref": "EmailWorker9F0FF8B3"
+       }
+      ]
+     ]
+    },
+    "RetentionInDays": 7
+   },
+   "Metadata": {
+    "aws:cdk:path": "MailhubWorkerStack/EmailWorker/LogRetention/Resource"
+   }
+  },
+  "EmailWorkerSqsEventSourceMailhubWorkerStackEmailQueueBD89A45A2998D50B": {
+   "Type": "AWS::Lambda::EventSourceMapping",
+   "Properties": {
+    "BatchSize": 10,
+    "Enabled": true,
+    "EventSourceArn": "arn:aws:sqs:us-east-1:584669670737:Private-MailHub-incoming-queue",
+    "FunctionName": {
+     "Ref": "EmailWorker9F0FF8B3"
+    },
+    "FunctionResponseTypes": [
+     "ReportBatchItemFailures"
+    ],
+    "MaximumBatchingWindowInSeconds": 0
+   },
+   "Metadata": {
+    "aws:cdk:path": "MailhubWorkerStack/EmailWorker/SqsEventSource:MailhubWorkerStackEmailQueueBD89A45A/Resource"
+   }
+  },
+  "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRole9741ECFB": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "MailhubWorkerStack/LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8a/ServiceRole/Resource"
+   }
+  },
+  "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRoleDefaultPolicyADDA7DEB": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "logs:DeleteRetentionPolicy",
+        "logs:PutRetentionPolicy"
+       ],
+       "Effect": "Allow",
+       "Resource": "*"
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRoleDefaultPolicyADDA7DEB",
+    "Roles": [
+     {
+      "Ref": "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRole9741ECFB"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "MailhubWorkerStack/LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8a/ServiceRole/DefaultPolicy/Resource"
+   }
+  },
+  "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Handler": "index.handler",
+    "Runtime": "nodejs22.x",
+    "Timeout": 900,
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-584669670737-us-east-1",
+     "S3Key": "2819175352ad1ce0dae768e83fc328fb70fb5f10b4a8ff0ccbcb791f02b0716d.zip"
+    },
+    "Role": {
+     "Fn::GetAtt": [
+      "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRole9741ECFB",
+      "Arn"
+     ]
+    }
+   },
+   "DependsOn": [
+    "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRoleDefaultPolicyADDA7DEB",
+    "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRole9741ECFB"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "MailhubWorkerStack/LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8a/Resource",
+    "aws:asset:path": "asset.2819175352ad1ce0dae768e83fc328fb70fb5f10b4a8ff0ccbcb791f02b0716d",
+    "aws:asset:is-bundled": false,
+    "aws:asset:property": "Code"
+   }
+  },
+  "EmailWorkerErrorAlarmE9DCEAC1": {
+   "Type": "AWS::CloudWatch::Alarm",
+   "Properties": {
+    "AlarmDescription": "Alert when Lambda function has errors",
+    "AlarmName": "mailhub-email-worker-errors",
+    "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+    "Dimensions": [
+     {
+      "Name": "FunctionName",
+      "Value": {
+       "Ref": "EmailWorker9F0FF8B3"
+      }
+     }
+    ],
+    "EvaluationPeriods": 1,
+    "MetricName": "Errors",
+    "Namespace": "AWS/Lambda",
+    "Period": 300,
+    "Statistic": "Sum",
+    "Threshold": 5
+   },
+   "Metadata": {
+    "aws:cdk:path": "MailhubWorkerStack/EmailWorkerErrorAlarm/Resource"
+   }
+  },
+  "EmailWorkerDurationAlarm72943D3F": {
+   "Type": "AWS::CloudWatch::Alarm",
+   "Properties": {
+    "AlarmDescription": "Alert when Lambda duration is close to timeout",
+    "AlarmName": "mailhub-email-worker-duration",
+    "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+    "Dimensions": [
+     {
+      "Name": "FunctionName",
+      "Value": {
+       "Ref": "EmailWorker9F0FF8B3"
+      }
+     }
+    ],
+    "EvaluationPeriods": 2,
+    "MetricName": "Duration",
+    "Namespace": "AWS/Lambda",
+    "Period": 300,
+    "Statistic": "Average",
+    "Threshold": 50000
+   },
+   "Metadata": {
+    "aws:cdk:path": "MailhubWorkerStack/EmailWorkerDurationAlarm/Resource"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/2VQQVLDMAx8C3dHlJQD15aBE0whfUBHdURw49hpZLXDePx37ITphdOuVprVSjXU6ydY3eGVK932lTVHiPuAuldZOkQ+M3wKCW2RSVkcji1CfBWng/FOPX+5G3+5kAt7L5OmdxxH47rS/q8mZXCA2HhLZWDGD2+N/inlwpLi9QGZKTBsCuQatqJ7CksQ3zG8+a6hkO3Ldm29tFcM+hvixuI0FLOZpKRmi3xV9xeqIZ4TqRvJ4k7CKCEp51uCE99f6kd4WOXfnNiYapK8ZyBoFvwF0dM6eTgBAAA="
+   },
+   "Metadata": {
+    "aws:cdk:path": "MailhubWorkerStack/CDKMetadata/Default"
+   }
+  }
+ },
+ "Outputs": {
+  "LambdaFunctionName": {
+   "Description": "Lambda function name",
+   "Value": {
+    "Ref": "EmailWorker9F0FF8B3"
+   }
+  },
+  "LambdaFunctionArn": {
+   "Description": "Lambda function ARN",
+   "Value": {
+    "Fn::GetAtt": [
+     "EmailWorker9F0FF8B3",
+     "Arn"
+    ]
+   }
+  },
+  "CloudWatchLogGroup": {
+   "Description": "CloudWatch Log Group for Lambda",
+   "Value": {
+    "Fn::GetAtt": [
+     "EmailWorkerLogRetentionEFA2933E",
+     "LogGroupName"
+    ]
+   }
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

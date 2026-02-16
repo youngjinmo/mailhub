@@ -1,0 +1,23 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "resolvePackageJsonExports": false,
+    "target": "ES2021",
+    "outDir": "./dist-lambda",
+    "sourceMap": true,
+    "declaration": false,
+    "removeComments": true
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "src/**/*.spec.ts",
+    "test",
+    "dist",
+    "dist-lambda",
+    "node_modules"
+  ]
+}

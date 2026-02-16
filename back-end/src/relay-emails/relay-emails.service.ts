@@ -222,7 +222,11 @@ export class RelayEmailsService {
     );
   }
 
-  private async processMessage(message: Message): Promise<void> {
+  /**
+   * Process a single SQS message containing S3 event notification
+   * This method is public to allow Lambda handler to call it directly
+   */
+  async processMessage(message: Message): Promise<void> {
     const s3Event = this.sqsService.parseS3Event(message);
 
     if (!s3Event || !s3Event.Records || s3Event.Records.length === 0) {

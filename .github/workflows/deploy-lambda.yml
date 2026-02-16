@@ -1,0 +1,176 @@
+name: Deploy Lambda Worker
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'back-end/src/**'
+      - 'infrastructure/**'
+      - '.github/workflows/deploy-lambda.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+jobs:
+  deploy:
+    name: Build and Deploy Lambda
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write # Required for OIDC authentication (if using)
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: |
+            back-end/package-lock.json
+            infrastructure/package-lock.json
+
+      # ========================================
+      # Build Lambda Function
+      # ========================================
+
+      - name: Install back-end dependencies
+        working-directory: ./back-end
+        run: npm ci
+
+      - name: Build Lambda function
+        working-directory: ./back-end
+        run: npm run build:lambda
+
+      - name: Check Lambda build output
+        run: |
+          echo "Lambda build size:"
+          du -sh back-end/dist-lambda
+          echo "Lambda handler exists:"
+          ls -lh back-end/dist-lambda/lambda/sqs-worker.handler.js
+
+      # ========================================
+      # Deploy Infrastructure
+      # ========================================
+
+      - name: Install infrastructure dependencies
+        working-directory: ./infrastructure
+        run: npm ci
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: CDK Synth
+        working-directory: ./infrastructure
+        env:
+          # Database
+          DATABASE_HOST: ${{ secrets.DATABASE_HOST }}
+          DATABASE_PORT: ${{ secrets.DATABASE_PORT }}
+          DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
+          DATABASE_USERNAME: ${{ secrets.DATABASE_USERNAME }}
+          DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+
+          # Redis
+          REDIS_HOST: ${{ secrets.REDIS_HOST }}
+          REDIS_PORT: ${{ secrets.REDIS_PORT }}
+          REDIS_TTL: ${{ secrets.REDIS_TTL }}
+
+          # VPC (optional)
+          VPC_ID: ${{ secrets.VPC_ID }}
+
+          # SQS
+          SQS_QUEUE_ARN: ${{ secrets.SQS_QUEUE_ARN }}
+
+          # S3 & SES
+          AWS_S3_EMAIL_BUCKET: ${{ secrets.AWS_S3_EMAIL_BUCKET }}
+          AWS_SES_FROM_EMAIL: ${{ secrets.AWS_SES_FROM_EMAIL }}
+
+          # App Config
+          NODE_ENV: production
+          APP_NAME: ${{ secrets.APP_NAME }}
+          APP_DOMAIN: ${{ secrets.APP_DOMAIN }}
+
+          # Encryption
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+        run: npm run synth
+
+      - name: CDK Deploy
+        working-directory: ./infrastructure
+        env:
+          # Same environment variables as synth
+          DATABASE_HOST: ${{ secrets.DATABASE_HOST }}
+          DATABASE_PORT: ${{ secrets.DATABASE_PORT }}
+          DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
+          DATABASE_USERNAME: ${{ secrets.DATABASE_USERNAME }}
+          DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          REDIS_HOST: ${{ secrets.REDIS_HOST }}
+          REDIS_PORT: ${{ secrets.REDIS_PORT }}
+          REDIS_TTL: ${{ secrets.REDIS_TTL }}
+          VPC_ID: ${{ secrets.VPC_ID }}
+          SQS_QUEUE_ARN: ${{ secrets.SQS_QUEUE_ARN }}
+          AWS_S3_EMAIL_BUCKET: ${{ secrets.AWS_S3_EMAIL_BUCKET }}
+          AWS_SES_FROM_EMAIL: ${{ secrets.AWS_SES_FROM_EMAIL }}
+          NODE_ENV: production
+          APP_NAME: ${{ secrets.APP_NAME }}
+          APP_DOMAIN: ${{ secrets.APP_DOMAIN }}
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+        run: npm run deploy -- --require-approval never
+
+      # ========================================
+      # Post-Deployment Verification
+      # ========================================
+
+      - name: Verify Lambda deployment
+        run: |
+          FUNCTION_NAME="mailhub-email-worker"
+
+          echo "Checking Lambda function status..."
+          aws lambda get-function --function-name $FUNCTION_NAME
+
+          echo "Getting Lambda configuration..."
+          aws lambda get-function-configuration --function-name $FUNCTION_NAME
+
+      - name: Test Lambda invocation
+        run: |
+          FUNCTION_NAME="mailhub-email-worker"
+
+          echo "Testing Lambda with empty SQS event..."
+          aws lambda invoke \
+            --function-name $FUNCTION_NAME \
+            --payload '{"Records":[]}' \
+            /tmp/response.json
+
+          echo "Lambda response:"
+          cat /tmp/response.json
+
+      # ========================================
+      # Notifications (Optional)
+      # ========================================
+
+      - name: Notify deployment success
+        if: success()
+        run: |
+          echo "✅ Lambda deployment successful!"
+          echo "Function: mailhub-email-worker"
+          echo "Region: ${{ secrets.AWS_REGION }}"
+
+      - name: Notify deployment failure
+        if: failure()
+        run: |
+          echo "❌ Lambda deployment failed!"
+          echo "Check logs for details."
