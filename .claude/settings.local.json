@@ -31,7 +31,11 @@
       "Bash(git rm:*)",
       "Bash(git rebase:*)",
       "Bash(git stash:*)",
-      "Bash(git stash pop:*)"
+      "Bash(git stash pop:*)",
+      "Bash(gh workflow list:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)",
+      "Bash(gh secret:*)"
     ]
   }
 }

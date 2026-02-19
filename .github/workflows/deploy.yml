@@ -1,26 +1,50 @@
 name: Deploy to EC2
-
 on:
   push:
     branches:
-      - main
-
+      - production
+permissions:
+  id-token: write # required for authenticate AWS OIDC
+  contents: read  # required for read repository
 jobs:
   deploy:
+    environment: production
     runs-on: ubuntu-latest
-
     steps:
-      - name: Deploy to EC2
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Configure AWS credential
+        uses: aws-actions/configure-aws-credentials@main
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Get Github Action Runner IP
+        id: github-action-runner-ip
+        run: |
+          echo "ip=$(curl -s https://checkip.amazonaws.com)" >> $GITHUB_OUTPUT
+
+      - name: Add Github Action Runner IP to AWS Security Group
+        run: |
+          aws ec2 authorize-security-group-ingress \
+            --group-id ${{ secrets.EC2_SECURITY_GROUP }} \
+            --protocol tcp \
+            --port 22 \
+            --cidr ${{ steps.github-action-runner-ip.outputs.ip }}/32
+
+      - name: SSH and deploy to EC2
         uses: appleboy/ssh-action@v1.2.0
         with:
+          key: ${{ secrets.EC2_SSH_KEY }}
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
-          key: ${{ secrets.EC2_SSH_KEY }}
+          port: ${{ secrets.EC2_PORT }}
           script: |
             cd /var/www/private-mailhub
 
             # Pull latest code
-            sudo git pull main
+            sudo git pull origin production
 
             # Build front-end
             cd front-end
@@ -35,3 +59,13 @@ jobs:
             # Reload PM2 processes
             cd ..
             pm2 reload all
+
+      - name: Revoke IP from AWS Security  Group
+        if: always()
+        run: |
+          aws ec2 revoke-security-group-ingress \
+            --group-id ${{ secrets.EC2_SECURITY_GROUP }} \
+            --protocol tcp \
+            --port 22 \
+            --cidr ${{ steps.github-action-runner-ip.outputs.ip }}/32
+
