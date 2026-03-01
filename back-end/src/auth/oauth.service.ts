@@ -46,6 +46,8 @@ export class OAuthService {
   async loginWithGithub(
     code: string,
     redirectUri: string,
+    ip: string,
+    userAgent: string,
   ): Promise<AuthResponseDto> {
     const clientId = this.customEnvService.get<string>('GITHUB_CLIENT_ID');
     const clientSecret = this.customEnvService.get<string>(
@@ -120,6 +122,8 @@ export class OAuthService {
       email,
       OAuthProvider.GITHUB,
       oauthId,
+      ip,
+      userAgent,
       encryptedToken,
     );
   }
@@ -127,6 +131,8 @@ export class OAuthService {
   async loginWithGoogle(
     code: string,
     redirectUri: string,
+    ip: string,
+    userAgent: string,
   ): Promise<AuthResponseDto> {
     const clientId = this.customEnvService.get<string>('GOOGLE_CLIENT_ID');
     const clientSecret = this.customEnvService.get<string>(
@@ -172,11 +178,17 @@ export class OAuthService {
       email,
       OAuthProvider.GOOGLE,
       oauthId,
+      ip,
+      userAgent,
       encryptedToken,
     );
   }
 
-  async loginWithApple(idToken: string): Promise<AuthResponseDto> {
+  async loginWithApple(
+    idToken: string,
+    ip: string,
+    userAgent: string,
+  ): Promise<AuthResponseDto> {
     // Verify Apple id_token using JWKS
     const payload = await this.verifyAppleIdToken(idToken);
 
@@ -189,13 +201,21 @@ export class OAuthService {
     const email = payload.email as string;
     const oauthId = payload.sub as string;
 
-    return this.processOAuthUser(email, OAuthProvider.APPLE, oauthId);
+    return this.processOAuthUser(
+      email,
+      OAuthProvider.APPLE,
+      oauthId,
+      ip,
+      userAgent,
+    );
   }
 
   private async processOAuthUser(
     email: string,
     provider: OAuthProvider,
     oauthId: string,
+    ip: string,
+    userAgent: string,
     encryptedToken?: string,
   ): Promise<AuthResponseDto> {
     // 1. Find user by OAuth ID
@@ -247,10 +267,11 @@ export class OAuthService {
       user.username,
     );
 
-    // Store session
-    await this.cacheService.setSession(accessToken, refreshToken);
+    // Store session with fingerprint
+    const fingerprint = this.protectionUtil.hash(`${ip}${userAgent}`);
+    await this.cacheService.setSession(refreshToken, fingerprint);
 
-    return { accessToken };
+    return { accessToken, refreshToken };
   }
 
   async unlinkOAuth(userId: bigint, provider: OAuthProvider): Promise<void> {

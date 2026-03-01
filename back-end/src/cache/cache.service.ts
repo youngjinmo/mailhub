@@ -48,12 +48,15 @@ export class CacheService {
     return session;
   }
 
-  async setSession(accessToken: string, refreshToken: string): Promise<void> {
-    const key = this.getSessionKey(accessToken);
+  async setSession(
+    refreshToken: string,
+    clientFingerprint: string,
+  ): Promise<void> {
+    const key = this.getSessionKey(refreshToken);
     const ttl = this.customEnvService.get<number>(
       'JWT_REFRESH_TOKEN_EXPIRATION',
     );
-    await this.cacheRepository.set(key, refreshToken, ttl);
+    await this.cacheRepository.set(key, clientFingerprint, ttl);
   }
 
   async delSession(token: string): Promise<void> {
