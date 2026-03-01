@@ -2,10 +2,12 @@ import {
   Injectable,
   BadRequestException,
   UnauthorizedException,
+  ForbiddenException,
   HttpException,
   HttpStatus,
   Logger,
 } from '@nestjs/common';
+import { createHash } from 'crypto';
 import { TokenService } from './jwt/token.service';
 import { CacheService } from '../cache/cache.service';
 import { UsersService } from '../users/users.service';
@@ -62,7 +64,11 @@ export class AuthService {
     return { isNewUser };
   }
 
-  async verifyCodeAndLogin(dto: LoginDto): Promise<AuthResponseDto> {
+  async verifyCodeAndLogin(
+    dto: LoginDto,
+    ip: string,
+    userAgent: string,
+  ): Promise<AuthResponseDto> {
     // username is used only for create account
     const { encryptedUsername, code } = dto;
     const usernameHash = this.protectionUtil.hash(
@@ -126,10 +132,58 @@ export class AuthService {
       user.username,
     );
 
-    // Store session
-    await this.cacheService.setSession(accessToken, refreshToken);
+    // Store session with fingerprint
+    const fingerprint = this.hashFingerprint(ip, userAgent);
+    await this.cacheService.setSession(refreshToken, fingerprint);
 
-    return { accessToken };
+    return { accessToken, refreshToken };
+  }
+
+  async refreshTokens(
+    refreshToken: string,
+    ip: string,
+    userAgent: string,
+  ): Promise<AuthResponseDto> {
+    // Verify refresh token (throws TokenExpiredError if expired)
+    let payload: TokenPayloadDto;
+    try {
+      payload = this.tokenService.parsePayloadFromToken(refreshToken);
+    } catch (error) {
+      this.logger.debug(`failed to verify refresh token by ${error.message}`);
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    // Check if session exists in Redis
+    let storedFingerprint: string;
+    try {
+      storedFingerprint = await this.cacheService.getSession(refreshToken);
+    } catch {
+      throw new UnauthorizedException('Session not found');
+    }
+
+    // Verify fingerprint
+    const currentFingerprint = this.hashFingerprint(ip, userAgent);
+    if (storedFingerprint !== currentFingerprint) {
+      // Possible token theft — delete the session
+      await this.cacheService.delSession(refreshToken);
+      throw new ForbiddenException('Client fingerprint mismatch');
+    }
+
+    // Generate new token pair
+    const newTokens = this.tokenService.generateTokens(
+      payload.userId,
+      payload.username,
+    );
+
+    // Rotate: delete old session, store new one
+    await this.cacheService.delSession(refreshToken);
+    const newFingerprint = this.hashFingerprint(ip, userAgent);
+    await this.cacheService.setSession(newTokens.refreshToken, newFingerprint);
+
+    return {
+      accessToken: newTokens.accessToken,
+      refreshToken: newTokens.refreshToken,
+    };
   }
 
   verifyToken(accessToken: string): boolean {
@@ -145,42 +199,11 @@ export class AuthService {
     return this.tokenService.parsePayloadFromToken(accessToken);
   }
 
-  async refreshAccessToken(refreshToken: string): Promise<string> {
-    try {
-      // Validate refresh token
-      const { userId, username } = this.parsePayloadFromToken(refreshToken);
-
-      // Check if refresh token exists in Redis
-      const isValid = await this.validateRefreshToken(userId, refreshToken);
-
-      if (!isValid) {
-        throw new UnauthorizedException('Invalid or revoked refresh token');
-      }
-
-      // Generate new access token
-      const newAccessToken = this.tokenService.generateAccessToken(
-        userId,
-        username,
-      );
-
-      return newAccessToken;
-    } catch (error) {
-      this.logger.error(error, 'failed to refresh access token');
-      throw new UnauthorizedException('Invalid refresh token');
-    }
+  async logout(refreshToken: string): Promise<void> {
+    await this.cacheService.delSession(refreshToken);
   }
 
-  async logout(accessToken: string): Promise<void> {
-    await this.cacheService.delSession(accessToken);
-  }
-
-  generateRefreshToken(userId: bigint, username: string): string {
-    return this.tokenService.generateRefreshToken(userId, username);
-  }
-
-  async validateRefreshToken(userId: bigint, token: string): Promise<boolean> {
-    const session = await this.cacheService.getSession(token);
-    const payload = this.parsePayloadFromToken(token);
-    return session === payload.userId.toString();
+  private hashFingerprint(ip: string, userAgent: string): string {
+    return createHash('sha256').update(`${ip}${userAgent}`).digest('hex');
   }
 }
