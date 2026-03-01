@@ -222,9 +222,42 @@ export function clearAccessToken(): void {
 }
 
 /**
+ * Refresh tokens mutex — prevents concurrent refresh requests
+ */
+let refreshPromise: Promise<boolean> | null = null;
+
+/**
+ * Attempt to refresh access token using the HttpOnly refresh token cookie
+ * Returns true on success, false on failure
+ */
+async function refreshTokens(): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    if (response.status === 201) {
+      const apiResponse: ApiResponse<{ accessToken: string }> = await response.json();
+      setAccessToken(apiResponse.data.accessToken);
+      return true;
+    }
+
+    // Refresh failed (401/403) — clear tokens and redirect
+    clearAccessToken();
+    window.location.href = '/login';
+    return false;
+  } catch {
+    clearAccessToken();
+    window.location.href = '/login';
+    return false;
+  }
+}
+
+/**
  * Make an authenticated API request with automatic token refresh
- * The backend JwtAuthGuard automatically refreshes expired access tokens
- * and returns the new token in the X-New-Access-Token response header
+ * On 401 EXPIRED TOKEN, automatically refreshes tokens and retries the request
  */
 async function authenticatedFetch(url: string, options: RequestInit = {}): Promise<Response> {
   // Add authorization header if access token exists
@@ -237,17 +270,45 @@ async function authenticatedFetch(url: string, options: RequestInit = {}): Promi
   const response = await fetch(url, {
     ...options,
     headers,
-    credentials: 'include', // Include HTTP-only cookies
+    credentials: 'include',
   });
 
-  // Check if backend refreshed the access token
-  const newAccessToken = response.headers.get('Authorization');
-  if (newAccessToken) {
-    setAccessToken(newAccessToken);
-  }
-
-  // If still unauthorized after potential refresh, clear token
+  // Handle expired access token
   if (response.status === 401) {
+    const cloned = response.clone();
+    let errorMessage = '';
+    try {
+      const body = await cloned.json();
+      errorMessage = body?.data || body?.message || '';
+    } catch {
+      // ignore parse errors
+    }
+
+    if (errorMessage === 'EXPIRED TOKEN') {
+      // Use mutex to prevent concurrent refresh requests
+      if (!refreshPromise) {
+        refreshPromise = refreshTokens().finally(() => {
+          refreshPromise = null;
+        });
+      }
+
+      const refreshed = await refreshPromise;
+      if (refreshed) {
+        // Retry original request with new access token
+        const retryHeaders = new Headers(options.headers);
+        const newToken = getAccessToken();
+        if (newToken) {
+          retryHeaders.set('Authorization', `Bearer ${newToken}`);
+        }
+        return fetch(url, {
+          ...options,
+          headers: retryHeaders,
+          credentials: 'include',
+        });
+      }
+    }
+
+    // Non-expired 401 — clear token
     clearAccessToken();
   }
 
@@ -718,6 +779,7 @@ export async function oauthLoginGithub(
 ): Promise<{ accessToken: string }> {
   const response = await fetch(`${API_BASE_URL}/api/auth/oauth/github`, {
     method: 'POST',
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ code, redirectUri }),
   });
@@ -742,6 +804,7 @@ export async function oauthLoginGoogle(
 ): Promise<{ accessToken: string }> {
   const response = await fetch(`${API_BASE_URL}/api/auth/oauth/google`, {
     method: 'POST',
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ code, redirectUri }),
   });
@@ -763,6 +826,7 @@ export async function oauthLoginGoogle(
 export async function oauthLoginApple(idToken: string): Promise<{ accessToken: string }> {
   const response = await fetch(`${API_BASE_URL}/api/auth/oauth/apple`, {
     method: 'POST',
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ idToken }),
   });
