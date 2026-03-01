@@ -56,12 +56,6 @@ class EnvironmentVariables {
   JWT_SECRET: string;
 
   @IsNumber()
-  JWT_ACCESS_TOKEN_EXPIRATION: number;
-
-  @IsNumber()
-  JWT_REFRESH_TOKEN_EXPIRATION: number;
-
-  @IsNumber()
   VERIFICATION_CODE_EXPIRATION: number;
 
   @IsNumber()

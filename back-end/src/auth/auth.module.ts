@@ -10,20 +10,18 @@ import { AwsModule } from '../aws/aws.module';
 import { MailModule } from 'src/mail/mail.module';
 import { CustomEnvService } from '../config/custom-env.service';
 import { ProtectionUtil } from 'src/common/utils/protection.util';
+import { ACCESS_TOKEN_EXPIRATION } from './auth.policy';
 
 @Module({
   imports: [
     JwtModule.registerAsync({
       useFactory: (customEnvService: CustomEnvService) => {
         const secret = customEnvService.get<string>('JWT_SECRET');
-        const expiresIn = customEnvService.get<number>(
-          'JWT_ACCESS_TOKEN_EXPIRATION',
-        );
 
         return {
           secret,
           signOptions: {
-            expiresIn: `${expiresIn}ms`,
+            expiresIn: `${ACCESS_TOKEN_EXPIRATION}ms`,
           },
         };
       },

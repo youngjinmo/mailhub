@@ -1,8 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { JwtPayload } from '../interfaces/jwt-payload.interface';
+import type { JwtPayload } from './jwt-payload.interface';
 import { CustomEnvService } from '../../config/custom-env.service';
 import { TokenPayloadDto } from '../dto/token-response.dto';
+import {
+  ACCESS_TOKEN_EXPIRATION,
+  REFRESH_TOKEN_EXPIRATION,
+} from '../auth.policy';
 
 @Injectable()
 export class TokenService {
@@ -17,14 +21,9 @@ export class TokenService {
       username,
     };
 
-    const secret = this.customEnvService.get<string>('JWT_SECRET');
-    const expiresIn = this.customEnvService.get<number>(
-      'JWT_ACCESS_TOKEN_EXPIRATION',
-    );
-
     return this.jwtService.sign(payload, {
-      secret,
-      expiresIn: `${expiresIn}ms`,
+      secret: this.customEnvService.get<string>('JWT_SECRET'),
+      expiresIn: `${ACCESS_TOKEN_EXPIRATION}ms`,
     });
   }
 
@@ -34,14 +33,9 @@ export class TokenService {
       username,
     };
 
-    const secret = this.customEnvService.get<string>('JWT_SECRET');
-    const expiresIn = this.customEnvService.get<number>(
-      'JWT_REFRESH_TOKEN_EXPIRATION',
-    );
-
     return this.jwtService.sign(payload, {
-      secret,
-      expiresIn: `${expiresIn}ms`,
+      secret: this.customEnvService.get<string>('JWT_SECRET'),
+      expiresIn: `${REFRESH_TOKEN_EXPIRATION}ms`,
     });
   }
 
