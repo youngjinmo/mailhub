@@ -22,6 +22,7 @@ import {
   OAuthAppleDto,
 } from './dto/oauth-login.dto';
 import { UnlinkOAuthDto } from '../users/dto/unlink-oauth.dto';
+import { REFRESH_TOKEN_EXPIRATION } from './auth.policy';
 import { Public } from '../common/decorators/public.decorator';
 import {
   CurrentUser,
@@ -195,14 +196,11 @@ export class AuthController {
     response: Response,
     refreshToken: string,
   ): void {
-    const maxAge = this.customEnvService.get<number>(
-      'JWT_REFRESH_TOKEN_EXPIRATION',
-    );
     response.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       secure: true,
       sameSite: 'strict',
-      maxAge,
+      maxAge: REFRESH_TOKEN_EXPIRATION,
       path: '/',
     });
   }
