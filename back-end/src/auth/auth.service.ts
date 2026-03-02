@@ -7,7 +7,6 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import { createHash } from 'crypto';
 import { TokenService } from './jwt/token.service';
 import { CacheService } from '../cache/cache.service';
 import { UsersService } from '../users/users.service';
@@ -133,7 +132,7 @@ export class AuthService {
     );
 
     // Store session with fingerprint
-    const fingerprint = this.hashFingerprint(ip, userAgent);
+    const fingerprint = this.protectionUtil.hash(`${ip}:${userAgent}`);
     await this.cacheService.setSession(refreshToken, fingerprint);
 
     return { accessToken, refreshToken };
@@ -162,7 +161,7 @@ export class AuthService {
     }
 
     // Verify fingerprint
-    const currentFingerprint = this.hashFingerprint(ip, userAgent);
+    const currentFingerprint = this.protectionUtil.hash(`${ip}:${userAgent}`);
     if (storedFingerprint !== currentFingerprint) {
       // Possible token theft — delete the session
       await this.cacheService.delSession(refreshToken);
@@ -177,7 +176,7 @@ export class AuthService {
 
     // Rotate: delete old session, store new one
     await this.cacheService.delSession(refreshToken);
-    const newFingerprint = this.hashFingerprint(ip, userAgent);
+    const newFingerprint = this.protectionUtil.hash(`${ip}:${userAgent}`);
     await this.cacheService.setSession(newTokens.refreshToken, newFingerprint);
 
     return {
@@ -201,9 +200,5 @@ export class AuthService {
 
   async logout(refreshToken: string): Promise<void> {
     await this.cacheService.delSession(refreshToken);
-  }
-
-  private hashFingerprint(ip: string, userAgent: string): string {
-    return createHash('sha256').update(`${ip}${userAgent}`).digest('hex');
   }
 }

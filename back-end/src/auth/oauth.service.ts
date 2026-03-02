@@ -268,7 +268,7 @@ export class OAuthService {
     );
 
     // Store session with fingerprint
-    const fingerprint = this.protectionUtil.hash(`${ip}${userAgent}`);
+    const fingerprint = this.protectionUtil.hash(`${ip}:${userAgent}`);
     await this.cacheService.setSession(refreshToken, fingerprint);
 
     return { accessToken, refreshToken };
