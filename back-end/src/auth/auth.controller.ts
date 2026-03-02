@@ -13,7 +13,6 @@ import {
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { OAuthService } from './oauth.service';
-import { CustomEnvService } from '../config/custom-env.service';
 import { SendVerificationCodeDto } from './dto/send-verification-code.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import {
@@ -29,13 +28,14 @@ import {
   type CurrentUserPayload,
 } from '../common/decorators/current-user.decorator';
 import { LoginDto } from './dto/login.dto';
+import { ClientUtil } from 'src/common/utils/client.util';
 
 @Controller('auth')
 export class AuthController {
   constructor(
-    private authService: AuthService,
-    private oauthService: OAuthService,
-    private customEnvService: CustomEnvService,
+    private readonly authService: AuthService,
+    private readonly oauthService: OAuthService,
+    private readonly clientUtil: ClientUtil,
   ) {}
 
   @Public()
@@ -58,9 +58,7 @@ export class AuthController {
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<Pick<AuthResponseDto, 'accessToken'>> {
-    const ip = request.ip || request.socket.remoteAddress || '';
-    const userAgent = request.headers['user-agent'] || '';
-
+    const { ip, userAgent } = this.clientUtil.getClientInfo(request);
     const { accessToken, refreshToken } =
       await this.authService.verifyCodeAndLogin(dto, ip, userAgent);
 
@@ -80,9 +78,7 @@ export class AuthController {
       throw new UnauthorizedException('Refresh token not found');
     }
 
-    const ip = request.ip || request.socket.remoteAddress || '';
-    const userAgent = request.headers['user-agent'] || '';
-
+    const { ip, userAgent } = this.clientUtil.getClientInfo(request);
     const { accessToken, refreshToken: newRefreshToken } =
       await this.authService.refreshTokens(refreshToken, ip, userAgent);
 
@@ -126,9 +122,7 @@ export class AuthController {
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<Pick<AuthResponseDto, 'accessToken'>> {
-    const ip = request.ip || request.socket.remoteAddress || '';
-    const userAgent = request.headers['user-agent'] || '';
-
+    const { ip, userAgent } = this.clientUtil.getClientInfo(request);
     const { accessToken, refreshToken } =
       await this.oauthService.loginWithGithub(
         dto.code,
@@ -151,7 +145,6 @@ export class AuthController {
   ): Promise<Pick<AuthResponseDto, 'accessToken'>> {
     const ip = request.ip || request.socket.remoteAddress || '';
     const userAgent = request.headers['user-agent'] || '';
-
     const { accessToken, refreshToken } =
       await this.oauthService.loginWithGoogle(
         dto.code,
@@ -174,7 +167,6 @@ export class AuthController {
   ): Promise<Pick<AuthResponseDto, 'accessToken'>> {
     const ip = request.ip || request.socket.remoteAddress || '';
     const userAgent = request.headers['user-agent'] || '';
-
     const { accessToken, refreshToken } =
       await this.oauthService.loginWithApple(dto.idToken, ip, userAgent);
 
