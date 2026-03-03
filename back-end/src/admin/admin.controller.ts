@@ -11,7 +11,7 @@ import {
   CurrentUser,
   type CurrentUserPayload,
 } from '../common/decorators/current-user.decorator';
-import { UserRole } from '../users/user.enums';
+import { isAdmin } from 'src/common/utils/permission.util';
 
 @Controller('admin')
 export class AdminController {
@@ -24,7 +24,7 @@ export class AdminController {
   @HttpCode(HttpStatus.OK)
   async getDashboard(@CurrentUser() currentUser: CurrentUserPayload) {
     const user = await this.usersService.findById(currentUser.userId);
-    if (!user || user.role !== UserRole.ADMIN) {
+    if (!user || !isAdmin(user.role)) {
       throw new ForbiddenException('Access denied');
     }
 
