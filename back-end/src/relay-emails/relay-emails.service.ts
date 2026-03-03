@@ -19,8 +19,7 @@ import { CustomEnvService } from 'src/config/custom-env.service';
 import { ProtectionUtil } from 'src/common/utils/protection.util';
 import { generateRandomRelayUsername } from 'src/common/utils/relay-email.util';
 import { User } from 'src/users/entities/user.entity';
-import { SubscriptionTier } from 'src/common/enums/subscription-tier.enum';
-import { UserRole } from 'src/users/user.enums';
+import { isProTier } from 'src/common/utils/permission.util';
 
 @Injectable()
 export class RelayEmailsService {
@@ -39,7 +38,7 @@ export class RelayEmailsService {
   ) {}
 
   async generateRelayEmailAddress(user: User): Promise<RelayEmail> {
-    if (user.subscriptionTier === SubscriptionTier.FREE) {
+    if (!isProTier(user)) {
       const count = await this.countByUser(user.id);
       if (count >= this.FREE_LIMIT) {
         throw new ForbiddenException(
@@ -88,7 +87,7 @@ export class RelayEmailsService {
     customUsername: string,
   ): Promise<RelayEmail> {
     // Check permission
-    if (!this.hasPermissionToCreateCutomRelayEmail(user)) {
+    if (!isProTier(user)) {
       throw new ForbiddenException('User can not create custom email address');
     }
     // Build custom relay address
@@ -213,13 +212,6 @@ export class RelayEmailsService {
         error.stack,
       );
     }
-  }
-
-  private hasPermissionToCreateCutomRelayEmail(user: User): boolean {
-    return (
-      user.subscriptionTier === SubscriptionTier.PRO ||
-      user.role === UserRole.ADMIN
-    );
   }
 
   private async processMessage(message: Message): Promise<void> {
@@ -647,3 +639,4 @@ export class RelayEmailsService {
     }
   }
 }
+
