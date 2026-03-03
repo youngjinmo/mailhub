@@ -37,9 +37,7 @@ export class SqsService {
 
   constructor(private readonly customEnvService: CustomEnvService) {
     const accessKeyId = this.customEnvService.get<string>('AWS_ACCESS_KEY_ID');
-    const secretAccessKey = this.customEnvService.get<string>(
-      'AWS_SECRET_ACCESS_KEY',
-    );
+    const secretAccessKey = this.customEnvService.get<string>('AWS_SECRET_ACCESS_KEY');
     const region = this.customEnvService.get<string>('AWS_REGION');
 
     this.sqsClient = new SQSClient({
@@ -72,10 +70,7 @@ export class SqsService {
 
       return messages;
     } catch (error) {
-      this.logger.error(
-        `Failed to receive messages from SQS: ${error.message}`,
-        error.stack,
-      );
+      this.logger.error(`Failed to receive messages from SQS: ${error.message}`, error.stack);
       throw error;
     }
   }
@@ -90,10 +85,7 @@ export class SqsService {
       await this.sqsClient.send(command);
       this.logger.log('Message deleted from SQS');
     } catch (error) {
-      this.logger.error(
-        `Failed to delete message from SQS: ${error.message}`,
-        error.stack,
-      );
+      this.logger.error(`Failed to delete message from SQS: ${error.message}`, error.stack);
       throw error;
     }
   }
@@ -122,10 +114,7 @@ export class SqsService {
       this.logger.warn('Unable to parse S3 event from message');
       return null;
     } catch (error) {
-      this.logger.error(
-        `Failed to parse S3 event: ${error.message}`,
-        error.stack,
-      );
+      this.logger.error(`Failed to parse S3 event: ${error.message}`, error.stack);
       return null;
     }
   }

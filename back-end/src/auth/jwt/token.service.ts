@@ -3,10 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import type { JwtPayload } from './jwt-payload.interface';
 import { CustomEnvService } from '../../config/custom-env.service';
 import { TokenPayloadDto } from '../dto/token-response.dto';
-import {
-  ACCESS_TOKEN_EXPIRATION,
-  REFRESH_TOKEN_EXPIRATION,
-} from '../auth.policy';
+import { ACCESS_TOKEN_EXPIRATION, REFRESH_TOKEN_EXPIRATION } from '../auth.policy';
 
 @Injectable()
 export class TokenService {

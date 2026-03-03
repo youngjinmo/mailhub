@@ -70,8 +70,7 @@ export class RelayEmailsService {
       relayEmail,
     });
 
-    const savedRelayEmail =
-      await this.relayEmailRepository.save(relayEmailEntity);
+    const savedRelayEmail = await this.relayEmailRepository.save(relayEmailEntity);
 
     // Cache the mapping (store encrypted email in cache too)
     await this.cacheService.setRelayMailCache({
@@ -82,10 +81,7 @@ export class RelayEmailsService {
     return savedRelayEmail;
   }
 
-  async generateCustomRelayEmailAddress(
-    user: User,
-    customUsername: string,
-  ): Promise<RelayEmail> {
+  async generateCustomRelayEmailAddress(user: User, customUsername: string): Promise<RelayEmail> {
     // Check permission
     if (!isProTier(user)) {
       throw new ForbiddenException('User can not create custom email address');
@@ -120,12 +116,9 @@ export class RelayEmailsService {
     return savedRelayEmail;
   }
 
-  async findPrimaryEmailByRelayEmail(
-    relayEmail: string,
-  ): Promise<string | null> {
+  async findPrimaryEmailByRelayEmail(relayEmail: string): Promise<string | null> {
     // Try cache first
-    const cachedEncryptedEmail =
-      await this.cacheService.findPrimaryMailFromCache(relayEmail);
+    const cachedEncryptedEmail = await this.cacheService.findPrimaryMailFromCache(relayEmail);
 
     if (cachedEncryptedEmail) {
       // Decrypt before returning
@@ -222,14 +215,10 @@ export class RelayEmailsService {
       return;
     }
 
-    this.logger.log(
-      `Processing ${s3Event.Records.length} S3 records in parallel`,
-    );
+    this.logger.log(`Processing ${s3Event.Records.length} S3 records in parallel`);
 
     // Process all S3 records in parallel
-    await Promise.all(
-      s3Event.Records.map((record) => this.processS3Record(record)),
-    );
+    await Promise.all(s3Event.Records.map((record) => this.processS3Record(record)));
   }
 
   private async processS3Record(record: S3EventRecord): Promise<void> {
@@ -266,23 +255,17 @@ export class RelayEmailsService {
       const dbElapsed = Date.now() - dbStartTime;
 
       if (!relayEmailEntity) {
-        this.logger.warn(
-          `No relay email entity found for address: ${relayEmail}`,
-        );
+        this.logger.warn(`No relay email entity found for address: ${relayEmail}`);
         return;
       }
 
       if (!relayEmailEntity.isActive) {
-        this.logger.log(
-          `Relay email is not active, skipping forward: ${relayEmail}`,
-        );
+        this.logger.log(`Relay email is not active, skipping forward: ${relayEmail}`);
         return;
       }
 
       // Decrypt primary email
-      const primaryEmail = this.encryptionUtil.decrypt(
-        relayEmailEntity.primaryEmail,
-      );
+      const primaryEmail = this.encryptionUtil.decrypt(relayEmailEntity.primaryEmail);
 
       // Forward email to primary address
       const forwardStartTime = Date.now();
@@ -322,11 +305,8 @@ export class RelayEmailsService {
       const from = `${originalSenderAddress} [via Mailhub] <${relayEmailAddress}>`;
 
       // Get app configuration
-      const appName =
-        this.customEnvService.get<string>('APP_NAME') || 'Mailhub';
-      const appDomain =
-        this.customEnvService.get<string>('APP_DOMAIN') ||
-        'private-mailhub.com';
+      const appName = this.customEnvService.get<string>('APP_NAME') || 'Mailhub';
+      const appDomain = this.customEnvService.get<string>('APP_DOMAIN') || 'private-mailhub.com';
 
       // Build HTML header for forwarding information
       const htmlHeader = `
@@ -382,9 +362,7 @@ export class RelayEmailsService {
       const attachments = this.parseAttachments(mail);
 
       if (attachments.length > 0) {
-        this.logger.log(
-          `Forwarding email with ${attachments.length} attachment(s)`,
-        );
+        this.logger.log(`Forwarding email with ${attachments.length} attachment(s)`);
       }
 
       // Send email via SES (HTML only)
@@ -448,17 +426,12 @@ export class RelayEmailsService {
         cid: attachment.cid,
       }));
     } catch (error) {
-      this.logger.error(
-        `Failed to parse attachments: ${error.message}`,
-        error.stack,
-      );
+      this.logger.error(`Failed to parse attachments: ${error.message}`, error.stack);
       return [];
     }
   }
 
-  async findRelayEmailWithUserId(
-    relayEmail: string,
-  ): Promise<RelayEmail | null> {
+  async findRelayEmailWithUserId(relayEmail: string): Promise<RelayEmail | null> {
     return await this.relayEmailRepository.findOne({
       where: { relayEmail },
     });
@@ -488,9 +461,7 @@ export class RelayEmailsService {
     await this.relayEmailRepository.softRemove(relayEmailEntity);
 
     // Remove from cache
-    await this.cacheService.deleteRelayMailMappingCache(
-      relayEmailEntity.relayEmail,
-    );
+    await this.cacheService.deleteRelayMailMappingCache(relayEmailEntity.relayEmail);
   }
 
   async incrementForwardCount(relayEmail: string): Promise<void> {
@@ -511,11 +482,7 @@ export class RelayEmailsService {
     });
   }
 
-  async updateDescription(
-    id: bigint,
-    userId: bigint,
-    description: string,
-  ): Promise<RelayEmail> {
+  async updateDescription(id: bigint, userId: bigint, description: string): Promise<RelayEmail> {
     const relayEmail = await this.findById(id, userId);
 
     if (!relayEmail) {
@@ -526,11 +493,7 @@ export class RelayEmailsService {
     return await this.relayEmailRepository.save(relayEmail);
   }
 
-  async updateActiveStatus(
-    id: bigint,
-    userId: bigint,
-    isActive: boolean,
-  ): Promise<RelayEmail> {
+  async updateActiveStatus(id: bigint, userId: bigint, isActive: boolean): Promise<RelayEmail> {
     const relayEmailEntity = await this.findById(id, userId);
 
     if (!relayEmailEntity) {
@@ -538,15 +501,11 @@ export class RelayEmailsService {
     }
 
     // get primary email from cache
-    const cached = await this.cacheService.findPrimaryMailFromCache(
-      relayEmailEntity.relayEmail,
-    );
+    const cached = await this.cacheService.findPrimaryMailFromCache(relayEmailEntity.relayEmail);
 
     if (!!cached && !isActive) {
       // If exists cache and pause status
-      await this.cacheService.deleteRelayMailMappingCache(
-        relayEmailEntity.relayEmail,
-      );
+      await this.cacheService.deleteRelayMailMappingCache(relayEmailEntity.relayEmail);
     } else if (!cached && isActive) {
       // If no exists cache and live status
       await this.cacheService.setRelayMailCache({
@@ -562,11 +521,7 @@ export class RelayEmailsService {
   private getSender(mail: ParsedMail): string {
     try {
       // Try to get from 'from' field first
-      if (
-        mail.from?.value &&
-        Array.isArray(mail.from.value) &&
-        mail.from.value.length > 0
-      ) {
+      if (mail.from?.value && Array.isArray(mail.from.value) && mail.from.value.length > 0) {
         const senderAddress = mail.from.value[0]?.address;
         if (senderAddress) {
           return senderAddress;
@@ -577,9 +532,7 @@ export class RelayEmailsService {
       const returnPath = mail.headers.get('return-path');
       if (returnPath) {
         const returnPathValue =
-          typeof returnPath === 'string'
-            ? returnPath
-            : JSON.stringify(returnPath);
+          typeof returnPath === 'string' ? returnPath : JSON.stringify(returnPath);
 
         // Extract email from Return-Path (format: <email@example.com>)
         const emailMatch = returnPathValue.match(/<(.+?)>|([^\s<>]+@[^\s<>]+)/);
@@ -589,14 +542,9 @@ export class RelayEmailsService {
       }
 
       this.logger.error(mail, 'Failed to parse sender address found in email');
-      throw new InternalServerErrorException(
-        'Failed to parse sender from mail',
-      );
+      throw new InternalServerErrorException('Failed to parse sender from mail');
     } catch (error) {
-      this.logger.error(
-        `Failed to parse sender from email: ${error.message}`,
-        error.stack,
-      );
+      this.logger.error(`Failed to parse sender from email: ${error.message}`, error.stack);
       throw error;
     }
   }
@@ -608,15 +556,11 @@ export class RelayEmailsService {
 
       if (!addressObject) {
         this.logger.warn('No recipient address object found in email');
-        throw new InternalServerErrorException(
-          'Failed to parse mail recipient',
-        );
+        throw new InternalServerErrorException('Failed to parse mail recipient');
       }
 
       // Handle both single AddressObject and array of AddressObjects
-      const addressArray = Array.isArray(addressObject)
-        ? addressObject
-        : [addressObject];
+      const addressArray = Array.isArray(addressObject) ? addressObject : [addressObject];
 
       // Find first valid email address
       for (const addr of addressArray) {
@@ -631,10 +575,7 @@ export class RelayEmailsService {
       this.logger.warn('No valid recipient address found in email');
       throw new InternalServerErrorException('Failed to parse mail recipient');
     } catch (error) {
-      this.logger.error(
-        `Failed to parse recipient from email: ${error.message}`,
-        error.stack,
-      );
+      this.logger.error(`Failed to parse recipient from email: ${error.message}`, error.stack);
       throw error;
     }
   }

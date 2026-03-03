@@ -15,18 +15,11 @@ import { AuthService } from './auth.service';
 import { OAuthService } from './oauth.service';
 import { SendVerificationCodeDto } from './dto/send-verification-code.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
-import {
-  OAuthGithubDto,
-  OAuthGoogleDto,
-  OAuthAppleDto,
-} from './dto/oauth-login.dto';
+import { OAuthGithubDto, OAuthGoogleDto, OAuthAppleDto } from './dto/oauth-login.dto';
 import { UnlinkOAuthDto } from '../users/dto/unlink-oauth.dto';
 import { REFRESH_TOKEN_EXPIRATION } from './auth.policy';
 import { Public } from '../common/decorators/public.decorator';
-import {
-  CurrentUser,
-  type CurrentUserPayload,
-} from '../common/decorators/current-user.decorator';
+import { CurrentUser, type CurrentUserPayload } from '../common/decorators/current-user.decorator';
 import { LoginDto } from './dto/login.dto';
 import { ClientUtil } from 'src/common/utils/client.util';
 
@@ -44,9 +37,7 @@ export class AuthController {
   async sendVerificationCode(
     @Body() dto: SendVerificationCodeDto,
   ): Promise<{ message: string; isNewUser: boolean }> {
-    const { isNewUser } = await this.authService.sendVerificationCode(
-      dto.encryptedUsername,
-    );
+    const { isNewUser } = await this.authService.sendVerificationCode(dto.encryptedUsername);
     return { message: 'Verification code sent successfully', isNewUser };
   }
 
@@ -59,8 +50,11 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<Pick<AuthResponseDto, 'accessToken'>> {
     const { ip, userAgent } = this.clientUtil.getClientInfo(request);
-    const { accessToken, refreshToken } =
-      await this.authService.verifyCodeAndLogin(dto, ip, userAgent);
+    const { accessToken, refreshToken } = await this.authService.verifyCodeAndLogin(
+      dto,
+      ip,
+      userAgent,
+    );
 
     this.setRefreshTokenCookie(response, refreshToken);
     return { accessToken };
@@ -79,8 +73,11 @@ export class AuthController {
     }
 
     const { ip, userAgent } = this.clientUtil.getClientInfo(request);
-    const { accessToken, refreshToken: newRefreshToken } =
-      await this.authService.refreshTokens(refreshToken, ip, userAgent);
+    const { accessToken, refreshToken: newRefreshToken } = await this.authService.refreshTokens(
+      refreshToken,
+      ip,
+      userAgent,
+    );
 
     this.setRefreshTokenCookie(response, newRefreshToken);
     return { accessToken };
@@ -123,13 +120,12 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<Pick<AuthResponseDto, 'accessToken'>> {
     const { ip, userAgent } = this.clientUtil.getClientInfo(request);
-    const { accessToken, refreshToken } =
-      await this.oauthService.loginWithGithub(
-        dto.code,
-        dto.redirectUri,
-        ip,
-        userAgent,
-      );
+    const { accessToken, refreshToken } = await this.oauthService.loginWithGithub(
+      dto.code,
+      dto.redirectUri,
+      ip,
+      userAgent,
+    );
 
     this.setRefreshTokenCookie(response, refreshToken);
     return { accessToken };
@@ -145,13 +141,12 @@ export class AuthController {
   ): Promise<Pick<AuthResponseDto, 'accessToken'>> {
     const ip = request.ip || request.socket.remoteAddress || '';
     const userAgent = request.headers['user-agent'] || '';
-    const { accessToken, refreshToken } =
-      await this.oauthService.loginWithGoogle(
-        dto.code,
-        dto.redirectUri,
-        ip,
-        userAgent,
-      );
+    const { accessToken, refreshToken } = await this.oauthService.loginWithGoogle(
+      dto.code,
+      dto.redirectUri,
+      ip,
+      userAgent,
+    );
 
     this.setRefreshTokenCookie(response, refreshToken);
     return { accessToken };
@@ -167,8 +162,11 @@ export class AuthController {
   ): Promise<Pick<AuthResponseDto, 'accessToken'>> {
     const ip = request.ip || request.socket.remoteAddress || '';
     const userAgent = request.headers['user-agent'] || '';
-    const { accessToken, refreshToken } =
-      await this.oauthService.loginWithApple(dto.idToken, ip, userAgent);
+    const { accessToken, refreshToken } = await this.oauthService.loginWithApple(
+      dto.idToken,
+      ip,
+      userAgent,
+    );
 
     this.setRefreshTokenCookie(response, refreshToken);
     return { accessToken };
@@ -184,10 +182,7 @@ export class AuthController {
     return { message: `${dto.provider} OAuth unlinked successfully` };
   }
 
-  private setRefreshTokenCookie(
-    response: Response,
-    refreshToken: string,
-  ): void {
+  private setRefreshTokenCookie(response: Response, refreshToken: string): void {
     response.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       secure: true,

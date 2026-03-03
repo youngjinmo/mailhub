@@ -68,10 +68,7 @@ export class UsersService {
     }
   }
 
-  async updateUser(
-    usernameHash: string,
-    properties: Partial<User>,
-  ): Promise<void> {
+  async updateUser(usernameHash: string, properties: Partial<User>): Promise<void> {
     const user = await this.findByUsernameHash(usernameHash);
     if (!user) {
       throw new NotFoundException('User not found');
@@ -107,10 +104,7 @@ export class UsersService {
     await this.userRepository.softRemove(user);
   }
 
-  async updateSubscriptionTier(
-    userId: bigint,
-    tier: SubscriptionTier,
-  ): Promise<User> {
+  async updateSubscriptionTier(userId: bigint, tier: SubscriptionTier): Promise<User> {
     const user = await this.findById(userId);
     if (!user) {
       throw new NotFoundException('User not found');
@@ -149,17 +143,12 @@ export class UsersService {
     [OAuthProvider.GOOGLE]: 'googleOAuth',
   };
 
-  private static readonly OAUTH_TOKEN_FIELD_MAP: Partial<
-    Record<OAuthProvider, keyof User>
-  > = {
+  private static readonly OAUTH_TOKEN_FIELD_MAP: Partial<Record<OAuthProvider, keyof User>> = {
     [OAuthProvider.GITHUB]: 'githubOAuthToken',
     [OAuthProvider.GOOGLE]: 'googleOAuthToken',
   };
 
-  async findByOAuthId(
-    provider: OAuthProvider,
-    oauthId: string,
-  ): Promise<User | null> {
+  async findByOAuthId(provider: OAuthProvider, oauthId: string): Promise<User | null> {
     const field = UsersService.OAUTH_FIELD_MAP[provider];
     return await this.userRepository.findOne({
       where: { [field]: oauthId },
@@ -187,9 +176,7 @@ export class UsersService {
         username: encryptedEmail,
         usernameHash,
         [field]: oauthId,
-        ...(tokenField && encryptedToken
-          ? { [tokenField]: encryptedToken }
-          : {}),
+        ...(tokenField && encryptedToken ? { [tokenField]: encryptedToken } : {}),
       });
 
       return await this.userRepository.save(user);
@@ -212,9 +199,7 @@ export class UsersService {
       { id: userId },
       {
         [field]: oauthId,
-        ...(tokenField && encryptedToken
-          ? { [tokenField]: encryptedToken }
-          : {}),
+        ...(tokenField && encryptedToken ? { [tokenField]: encryptedToken } : {}),
       },
     );
   }
@@ -231,10 +216,7 @@ export class UsersService {
     );
   }
 
-  async getOAuthToken(
-    userId: bigint,
-    provider: OAuthProvider,
-  ): Promise<string | null> {
+  async getOAuthToken(userId: bigint, provider: OAuthProvider): Promise<string | null> {
     const tokenField = UsersService.OAUTH_TOKEN_FIELD_MAP[provider];
     if (!tokenField) return null;
 
@@ -244,10 +226,7 @@ export class UsersService {
     return (user[tokenField] as string) || null;
   }
 
-  async requestUsernameChange(
-    userId: bigint,
-    encryptedNewUsername: string,
-  ): Promise<void> {
+  async requestUsernameChange(userId: bigint, encryptedNewUsername: string): Promise<void> {
     const user = await this.findById(userId);
     if (!user) {
       throw new NotFoundException('User not found');
@@ -271,17 +250,10 @@ export class UsersService {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
 
     // Store in cache
-    await this.cacheService.setUsernameChangeData(
-      userId,
-      encryptedNewUsername,
-      code,
-    );
+    await this.cacheService.setUsernameChangeData(userId, encryptedNewUsername, code);
 
     // Send verification code to new email
-    await this.sendMailService.sendVerificationCodeForReturningUser(
-      newUsername,
-      code,
-    );
+    await this.sendMailService.sendVerificationCodeForReturningUser(newUsername, code);
   }
 
   async verifyUsernameChange(userId: bigint, code: string): Promise<void> {
@@ -303,9 +275,7 @@ export class UsersService {
       throw new BadRequestException('Invalid verification code');
     }
 
-    const newUsername = this.proectionUtil.decrypt(
-      cachedData.encryptedNewUsername,
-    );
+    const newUsername = this.proectionUtil.decrypt(cachedData.encryptedNewUsername);
     const newUsernameHash = this.proectionUtil.hash(newUsername);
 
     // Double check new username doesn't exist

@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  InternalServerErrorException,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { CustomEnvService } from 'src/config/custom-env.service';
 
@@ -39,11 +35,7 @@ export class ProtectionUtil {
       const iv = crypto.randomBytes(this.IV_LENGTH);
 
       // Create cipher
-      const cipher = crypto.createCipheriv(
-        this.ENCRYPT_ALGORITHM,
-        keyBuffer,
-        iv,
-      );
+      const cipher = crypto.createCipheriv(this.ENCRYPT_ALGORITHM, keyBuffer, iv);
 
       // Encrypt
       let encrypted = cipher.update(plaintext, 'utf8', this.ENCODE_ALGORITHM);
@@ -55,9 +47,7 @@ export class ProtectionUtil {
       // Return format: encrypted:iv:authTag
       return `${encrypted}:${iv.toString(this.ENCODE_ALGORITHM)}:${authTag.toString(this.ENCODE_ALGORITHM)}`;
     } catch (error) {
-      throw new InternalServerErrorException(
-        `Encryption failed: ${error.message}`,
-      );
+      throw new InternalServerErrorException(`Encryption failed: ${error.message}`);
     }
   }
 
@@ -79,9 +69,7 @@ export class ProtectionUtil {
       // Parse encrypted:iv:authTag format
       const parts = encryptedData.split(':');
       if (parts.length !== 3) {
-        throw new Error(
-          'Invalid encrypted data format. Expected: encrypted:iv:authTag',
-        );
+        throw new Error('Invalid encrypted data format. Expected: encrypted:iv:authTag');
       }
 
       const [encrypted, ivBase64, authTagBase64] = parts;
@@ -91,11 +79,7 @@ export class ProtectionUtil {
       const authTag = Buffer.from(authTagBase64, this.ENCODE_ALGORITHM);
 
       // Create decipher
-      const decipher = crypto.createDecipheriv(
-        this.ENCRYPT_ALGORITHM,
-        keyBuffer,
-        iv,
-      );
+      const decipher = crypto.createDecipheriv(this.ENCRYPT_ALGORITHM, keyBuffer, iv);
       decipher.setAuthTag(authTag);
 
       // Decrypt
@@ -115,10 +99,7 @@ export class ProtectionUtil {
    * @returns Hashed text by SHA-256
    */
   hash(plain: string): string {
-    return crypto
-      .createHash(this.HASH_ALGORITHM)
-      .update(plain)
-      .digest(this.DIGEST);
+    return crypto.createHash(this.HASH_ALGORITHM).update(plain).digest(this.DIGEST);
   }
 
   /**

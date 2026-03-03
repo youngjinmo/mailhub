@@ -18,10 +18,7 @@ export class SendMailService {
     this.contactMail = customEnvService.get<string>('CONTACT_ADDRESS');
   }
 
-  async sendVerificationCodeForNewUser(
-    username: string,
-    code: string,
-  ): Promise<void> {
+  async sendVerificationCodeForNewUser(username: string, code: string): Promise<void> {
     const appName = this.customEnvService.get<string>('APP_NAME');
     const subject = `[${appName}] Welcome! Here's your verification code`;
     const htmlBody = `
@@ -82,10 +79,7 @@ ${appName} Team
     });
   }
 
-  async sendVerificationCodeForReturningUser(
-    username: string,
-    code: string,
-  ): Promise<void> {
+  async sendVerificationCodeForReturningUser(username: string, code: string): Promise<void> {
     const appName = this.customEnvService.get<string>('APP_NAME');
     const subject = `[${appName}] Welcome back! Here's your verification code`;
     const htmlBody = `
@@ -200,10 +194,7 @@ ${this.customEnvService.get<string>('APP_NAME')} Team
     });
   }
 
-  async sendUsernameChangeVerificationCode(
-    newEmail: string,
-    code: string,
-  ): Promise<void> {
+  async sendUsernameChangeVerificationCode(newEmail: string, code: string): Promise<void> {
     const subject = `[${this.customEnvService.get<string>('APP_NAME')}] Verify Your New Email Address`;
     const htmlBody = `
 <!DOCTYPE html>
@@ -259,10 +250,7 @@ ${this.customEnvService.get<string>('APP_NAME')} Team
     });
   }
 
-  async sendUsernameChangedNotification(
-    oldEmail: string,
-    newEmail: string,
-  ): Promise<void> {
+  async sendUsernameChangedNotification(oldEmail: string, newEmail: string): Promise<void> {
     const subject = `[${this.customEnvService.get<string>('APP_NAME')}] Email Address Changed`;
     const htmlBody = `
 <!DOCTYPE html>

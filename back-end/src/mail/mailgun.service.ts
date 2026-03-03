@@ -81,23 +81,18 @@ export class MailgunService {
           contentType: 'message/rfc2822',
         });
 
-        const response = await fetch(
-          `${this.baseUrl}/v3/${this.domain}/messages.mime`,
-          {
-            method: 'POST',
-            headers: {
-              Authorization: `Basic ${Buffer.from(`api:${this.apiKey}`).toString('base64')}`,
-              ...formData.getHeaders(),
-            },
-            body: new Uint8Array(formData.getBuffer()),
+        const response = await fetch(`${this.baseUrl}/v3/${this.domain}/messages.mime`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Basic ${Buffer.from(`api:${this.apiKey}`).toString('base64')}`,
+            ...formData.getHeaders(),
           },
-        );
+          body: new Uint8Array(formData.getBuffer()),
+        });
 
         if (!response.ok) {
           const errorText = await response.text();
-          this.logger.error(
-            `Mailgun MIME API error: ${response.status} - ${errorText}`,
-          );
+          this.logger.error(`Mailgun MIME API error: ${response.status} - ${errorText}`);
 
           if (response.status === 401 || response.status === 403) {
             throw new BadRequestException('Email domain not supported');
@@ -107,9 +102,7 @@ export class MailgunService {
         }
 
         const result = (await response.json()) as MailgunMessageResponse;
-        this.logger.log(
-          `Email with attachments sent successfully, mailgun messageId=${result.id}`,
-        );
+        this.logger.log(`Email with attachments sent successfully, mailgun messageId=${result.id}`);
         return;
       }
 
@@ -141,23 +134,18 @@ export class MailgunService {
         params.append('text', dto.body);
       }
 
-      const response = await fetch(
-        `${this.baseUrl}/v3/${this.domain}/messages`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Basic ${Buffer.from(`api:${this.apiKey}`).toString('base64')}`,
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: params.toString(),
+      const response = await fetch(`${this.baseUrl}/v3/${this.domain}/messages`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${Buffer.from(`api:${this.apiKey}`).toString('base64')}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
         },
-      );
+        body: params.toString(),
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
-        this.logger.error(
-          `Mailgun API error: ${response.status} - ${errorText}`,
-        );
+        this.logger.error(`Mailgun API error: ${response.status} - ${errorText}`);
 
         if (response.status === 401 || response.status === 403) {
           throw new BadRequestException('Email domain not supported');

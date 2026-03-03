@@ -1,10 +1,4 @@
-import {
-  IsEmail,
-  IsOptional,
-  IsString,
-  IsArray,
-  ValidateNested,
-} from 'class-validator';
+import { IsEmail, IsOptional, IsString, IsArray, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class EmailAttachment {
