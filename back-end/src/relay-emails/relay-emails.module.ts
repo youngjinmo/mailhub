@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { RelayEmailsController } from './relay-emails.controller';
 import { RelayEmailsService } from './relay-emails.service';
 import { RelayEmail } from './entities/relay-email.entity';
+import { ReplyMasking } from './entities/reply-masking.entity';
 import { CacheModule } from '../cache/cache.module';
 import { UsersModule } from '../users/users.module';
 import { AwsModule } from '../aws/aws.module';
@@ -10,10 +11,11 @@ import { QueuePollerService } from './queue-poller.service';
 import { ProtectionUtil } from '../common/utils/protection.util';
 import { ConfigModule } from 'src/config/config.module';
 import { MailModule } from 'src/mail/mail.module';
+import { ReplyEmailsService } from './reply-emails.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([RelayEmail]),
+    TypeOrmModule.forFeature([RelayEmail, ReplyMasking]),
     CacheModule,
     UsersModule,
     AwsModule,
@@ -21,7 +23,7 @@ import { MailModule } from 'src/mail/mail.module';
     ConfigModule,
   ],
   controllers: [RelayEmailsController],
-  providers: [RelayEmailsService, QueuePollerService, ProtectionUtil],
-  exports: [RelayEmailsService],
+  providers: [RelayEmailsService, ReplyEmailsService, QueuePollerService, ProtectionUtil],
+  exports: [RelayEmailsService, ReplyEmailsService],
 })
 export class RelayEmailsModule {}

@@ -12,6 +12,10 @@ export class CacheService {
     private readonly customEnvService: CustomEnvService,
   ) {}
 
+  async set(key: string, value: any, ttl: number): Promise<void> {
+    await this.cacheRepository.set(key, value, ttl);
+  }
+
   // cache for relay email address
   async setRelayMailCache(setRelayMailCacheDto: SetRelayMailCacheDto): Promise<void> {
     const key = this.getRelayMailCacheKey(setRelayMailCacheDto.relayEmail);
