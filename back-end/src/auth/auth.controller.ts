@@ -139,8 +139,7 @@ export class AuthController {
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<Pick<AuthResponseDto, 'accessToken'>> {
-    const ip = request.ip || request.socket.remoteAddress || '';
-    const userAgent = request.headers['user-agent'] || '';
+    const { ip, userAgent } = this.clientUtil.getClientInfo(request);
     const { accessToken, refreshToken } = await this.oauthService.loginWithGoogle(
       dto.code,
       dto.redirectUri,
@@ -160,8 +159,7 @@ export class AuthController {
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<Pick<AuthResponseDto, 'accessToken'>> {
-    const ip = request.ip || request.socket.remoteAddress || '';
-    const userAgent = request.headers['user-agent'] || '';
+    const { ip, userAgent } = this.clientUtil.getClientInfo(request);
     const { accessToken, refreshToken } = await this.oauthService.loginWithApple(
       dto.idToken,
       ip,
