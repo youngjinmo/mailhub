@@ -1,16 +1,7 @@
-import {
-  Controller,
-  Get,
-  ForbiddenException,
-  HttpCode,
-  HttpStatus,
-} from '@nestjs/common';
+import { Controller, Get, ForbiddenException, HttpCode, HttpStatus } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { UsersService } from '../users/users.service';
-import {
-  CurrentUser,
-  type CurrentUserPayload,
-} from '../common/decorators/current-user.decorator';
+import { CurrentUser, type CurrentUserPayload } from '../common/decorators/current-user.decorator';
 import { isAdmin } from 'src/common/utils/permission.util';
 
 @Controller('admin')

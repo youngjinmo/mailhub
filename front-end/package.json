@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "start": "vite",
-    "build": "vite build && eslint . --fix",
+    "build": "vite build && prettier --write \"src/**/*.{ts,tsx}\" && eslint . --fix",
     "build:prod": "vite build --mode production",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

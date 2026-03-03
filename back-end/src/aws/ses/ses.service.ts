@@ -18,9 +18,7 @@ export class SesService {
   constructor(private customEnvService: CustomEnvService) {
     const region = this.customEnvService.get<string>('AWS_REGION');
     const accessKeyId = this.customEnvService.get<string>('AWS_ACCESS_KEY_ID');
-    const secretAccessKey = this.customEnvService.get<string>(
-      'AWS_SECRET_ACCESS_KEY',
-    );
+    const secretAccessKey = this.customEnvService.get<string>('AWS_SECRET_ACCESS_KEY');
 
     this.sesClient = new SESClient({
       region,

@@ -30,15 +30,12 @@ export class AuthService {
     private readonly protectionUtil: ProtectionUtil,
   ) {}
 
-  async sendVerificationCode(
-    encryptedUsername: string,
-  ): Promise<{ isNewUser: boolean }> {
+  async sendVerificationCode(encryptedUsername: string): Promise<{ isNewUser: boolean }> {
     const username = this.protectionUtil.decrypt(encryptedUsername);
     const usernameHash = this.protectionUtil.hash(username);
 
     // Check if user exists
-    const existingUser =
-      await this.usersService.findByUsernameHash(usernameHash);
+    const existingUser = await this.usersService.findByUsernameHash(usernameHash);
     const isNewUser = !existingUser;
 
     // Generate a 6-digit verification code
@@ -54,33 +51,23 @@ export class AuthService {
     if (isNewUser) {
       await this.sendMailService.sendVerificationCodeForNewUser(username, code);
     } else {
-      await this.sendMailService.sendVerificationCodeForReturningUser(
-        username,
-        code,
-      );
+      await this.sendMailService.sendVerificationCodeForReturningUser(username, code);
     }
 
     return { isNewUser };
   }
 
-  async verifyCodeAndLogin(
-    dto: LoginDto,
-    ip: string,
-    userAgent: string,
-  ): Promise<AuthResponseDto> {
+  async verifyCodeAndLogin(dto: LoginDto, ip: string, userAgent: string): Promise<AuthResponseDto> {
     // username is used only for create account
     const { encryptedUsername, code } = dto;
-    const usernameHash = this.protectionUtil.hash(
-      this.protectionUtil.decrypt(encryptedUsername),
-    );
+    const usernameHash = this.protectionUtil.hash(this.protectionUtil.decrypt(encryptedUsername));
 
     // Check verification attempts
     const maxAttempts = this.customEnvService.getWithDefault<number>(
       'VERIFICATION_CODE_MAX_ATTEMPTS',
       3,
     );
-    const attempts =
-      await this.cacheService.getVerificationAttempts(usernameHash);
+    const attempts = await this.cacheService.getVerificationAttempts(usernameHash);
 
     if (maxAttempts && attempts >= maxAttempts) {
       throw new HttpException(
@@ -90,8 +77,7 @@ export class AuthService {
     }
 
     // Get stored verification code
-    const storedCode =
-      await this.cacheService.getVerificationCode(usernameHash);
+    const storedCode = await this.cacheService.getVerificationCode(usernameHash);
 
     if (!storedCode) {
       throw new BadRequestException(
@@ -116,9 +102,7 @@ export class AuthService {
     if (!user) {
       user = await this.usersService.createEmailUser(encryptedUsername);
       // Send welcome email
-      await this.sendMailService.sendWelcomeEmail(
-        this.protectionUtil.decrypt(encryptedUsername),
-      );
+      await this.sendMailService.sendWelcomeEmail(this.protectionUtil.decrypt(encryptedUsername));
     }
     // update last_logined_at
     await this.usersService.updateUser(usernameHash, {
@@ -126,10 +110,7 @@ export class AuthService {
     });
 
     // Generate tokens
-    const { accessToken, refreshToken } = this.tokenService.generateTokens(
-      user.id,
-      user.username,
-    );
+    const { accessToken, refreshToken } = this.tokenService.generateTokens(user.id, user.username);
 
     // Store session with fingerprint
     const fingerprint = this.protectionUtil.hash(`${ip}:${userAgent}`);
@@ -169,10 +150,7 @@ export class AuthService {
     }
 
     // Generate new token pair
-    const newTokens = this.tokenService.generateTokens(
-      payload.userId,
-      payload.username,
-    );
+    const newTokens = this.tokenService.generateTokens(payload.userId, payload.username);
 
     // Rotate: delete old session, store new one
     await this.cacheService.delSession(refreshToken);

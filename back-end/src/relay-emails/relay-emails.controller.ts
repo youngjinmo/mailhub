@@ -15,10 +15,7 @@ import { UsersService } from '../users/users.service';
 import { CreateCustomRelayDto } from './dto/create-custom-relay.dto';
 import { UpdateDescriptionDto } from './dto/update-description.dto';
 import { UpdateActiveStatusDto } from './dto/update-active-status.dto';
-import {
-  CurrentUser,
-  type CurrentUserPayload,
-} from '../common/decorators/current-user.decorator';
+import { CurrentUser, type CurrentUserPayload } from '../common/decorators/current-user.decorator';
 import { RelayEmail } from './entities/relay-email.entity';
 
 @Controller('relay-emails')
@@ -57,8 +54,7 @@ export class RelayEmailsController {
       throw new NotFoundException('User not found');
     }
 
-    const relayEmailEntity =
-      await this.relayEmailsService.generateRelayEmailAddress(userEntity);
+    const relayEmailEntity = await this.relayEmailsService.generateRelayEmailAddress(userEntity);
     return {
       relayEmail: relayEmailEntity.relayEmail,
       isActive: relayEmailEntity.isActive,
@@ -79,11 +75,10 @@ export class RelayEmailsController {
       throw new NotFoundException('User not found');
     }
 
-    const relayEmailEntity =
-      await this.relayEmailsService.generateCustomRelayEmailAddress(
-        userEntity,
-        dto.customUsername,
-      );
+    const relayEmailEntity = await this.relayEmailsService.generateCustomRelayEmailAddress(
+      userEntity,
+      dto.customUsername,
+    );
 
     return {
       relayEmail: relayEmailEntity.relayEmail,

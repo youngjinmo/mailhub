@@ -13,14 +13,9 @@ export class CacheService {
   ) {}
 
   // cache for relay email address
-  async setRelayMailCache(
-    setRelayMailCacheDto: SetRelayMailCacheDto,
-  ): Promise<void> {
+  async setRelayMailCache(setRelayMailCacheDto: SetRelayMailCacheDto): Promise<void> {
     const key = this.getRelayMailCacheKey(setRelayMailCacheDto.relayEmail);
-    await this.cacheRepository.set(
-      key,
-      setRelayMailCacheDto.encryptedPrimaryEmail,
-    );
+    await this.cacheRepository.set(key, setRelayMailCacheDto.encryptedPrimaryEmail);
     this.logger.log('new relay mail mapped cache');
   }
 
@@ -49,16 +44,9 @@ export class CacheService {
     return session;
   }
 
-  async setSession(
-    refreshToken: string,
-    clientFingerprint: string,
-  ): Promise<void> {
+  async setSession(refreshToken: string, clientFingerprint: string): Promise<void> {
     const key = this.getSessionKey(refreshToken);
-    await this.cacheRepository.set(
-      key,
-      clientFingerprint,
-      REFRESH_TOKEN_EXPIRATION,
-    );
+    await this.cacheRepository.set(key, clientFingerprint, REFRESH_TOKEN_EXPIRATION);
   }
 
   async delSession(token: string): Promise<void> {
@@ -79,9 +67,7 @@ export class CacheService {
 
   async setVerificationCode(usernameHash: string, code: string): Promise<void> {
     const key = this.getVerificationCodeKey(usernameHash);
-    const ttl = this.customEnvService.get<number>(
-      'VERIFICATION_CODE_EXPIRATION',
-    );
+    const ttl = this.customEnvService.get<number>('VERIFICATION_CODE_EXPIRATION');
     await this.cacheRepository.set(key, code, ttl);
   }
 
@@ -113,10 +99,7 @@ export class CacheService {
 
   async incrementVerificationAttempts(usernameHash: string): Promise<number> {
     const key = this.getVerificationAttemptsKey(usernameHash);
-    const ttl = this.customEnvService.getWithDefault(
-      'VERIFICATION_CODE_EXPIRATION',
-      300000,
-    );
+    const ttl = this.customEnvService.getWithDefault('VERIFICATION_CODE_EXPIRATION', 300000);
     const previous = await this.getVerificationAttempts(usernameHash);
     const current = previous + 1;
     await this.cacheRepository.set(key, current, ttl);
@@ -144,9 +127,7 @@ export class CacheService {
     code: string,
   ): Promise<void> {
     const key = this.getUsernameChangeKey(userId);
-    const ttl = this.customEnvService.get<number>(
-      'VERIFICATION_CODE_EXPIRATION',
-    );
+    const ttl = this.customEnvService.get<number>('VERIFICATION_CODE_EXPIRATION');
     await this.cacheRepository.set(key, { encryptedNewUsername, code }, ttl);
   }
 

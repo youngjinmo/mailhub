@@ -50,27 +50,22 @@ export class OAuthService {
     userAgent: string,
   ): Promise<AuthResponseDto> {
     const clientId = this.customEnvService.get<string>('GITHUB_CLIENT_ID');
-    const clientSecret = this.customEnvService.get<string>(
-      'GITHUB_CLIENT_SECRET',
-    );
+    const clientSecret = this.customEnvService.get<string>('GITHUB_CLIENT_SECRET');
 
     // Exchange code for access token
-    const tokenResponse = await fetch(
-      'https://github.com/login/oauth/access_token',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify({
-          client_id: clientId,
-          client_secret: clientSecret,
-          code,
-          redirect_uri: redirectUri,
-        }),
+    const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
       },
-    );
+      body: JSON.stringify({
+        client_id: clientId,
+        client_secret: clientSecret,
+        code,
+        redirect_uri: redirectUri,
+      }),
+    });
 
     const tokenData = await tokenResponse.json();
     if (tokenData.error) {
@@ -105,16 +100,13 @@ export class OAuthService {
     if (emailResponse.ok) {
       const emails = await emailResponse.json();
       const primaryEmail = emails.find(
-        (e: { primary: boolean; verified: boolean; email: string }) =>
-          e.primary && e.verified,
+        (e: { primary: boolean; verified: boolean; email: string }) => e.primary && e.verified,
       );
       email = primaryEmail?.email || null;
     }
 
     if (!email) {
-      throw new UnauthorizedException(
-        'No verified primary email found on GitHub account',
-      );
+      throw new UnauthorizedException('No verified primary email found on GitHub account');
     }
 
     const encryptedToken = this.protectionUtil.encrypt(tokenData.access_token);
@@ -135,9 +127,7 @@ export class OAuthService {
     userAgent: string,
   ): Promise<AuthResponseDto> {
     const clientId = this.customEnvService.get<string>('GOOGLE_CLIENT_ID');
-    const clientSecret = this.customEnvService.get<string>(
-      'GOOGLE_CLIENT_SECRET',
-    );
+    const clientSecret = this.customEnvService.get<string>('GOOGLE_CLIENT_SECRET');
 
     // Exchange code for tokens
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
@@ -163,9 +153,7 @@ export class OAuthService {
     // Decode id_token to get user info (Google id_token is a JWT)
     const idTokenPayload = this.decodeJwtPayload(tokenData.id_token);
     if (!idTokenPayload || !idTokenPayload.email) {
-      throw new UnauthorizedException(
-        'Failed to extract user info from Google token',
-      );
+      throw new UnauthorizedException('Failed to extract user info from Google token');
     }
 
     const email = idTokenPayload.email as string;
@@ -184,30 +172,18 @@ export class OAuthService {
     );
   }
 
-  async loginWithApple(
-    idToken: string,
-    ip: string,
-    userAgent: string,
-  ): Promise<AuthResponseDto> {
+  async loginWithApple(idToken: string, ip: string, userAgent: string): Promise<AuthResponseDto> {
     // Verify Apple id_token using JWKS
     const payload = await this.verifyAppleIdToken(idToken);
 
     if (!payload || !payload.email) {
-      throw new UnauthorizedException(
-        'Failed to extract user info from Apple token',
-      );
+      throw new UnauthorizedException('Failed to extract user info from Apple token');
     }
 
     const email = payload.email as string;
     const oauthId = payload.sub as string;
 
-    return this.processOAuthUser(
-      email,
-      OAuthProvider.APPLE,
-      oauthId,
-      ip,
-      userAgent,
-    );
+    return this.processOAuthUser(email, OAuthProvider.APPLE, oauthId, ip, userAgent);
   }
 
   private async processOAuthUser(
@@ -224,12 +200,7 @@ export class OAuthService {
     if (user) {
       // Update stored token on re-login
       if (encryptedToken) {
-        await this.usersService.linkOAuth(
-          user.id,
-          provider,
-          oauthId,
-          encryptedToken,
-        );
+        await this.usersService.linkOAuth(user.id, provider, oauthId, encryptedToken);
       }
     } else {
       // 2. Find user by email hash
@@ -238,12 +209,7 @@ export class OAuthService {
 
       if (user) {
         // Link OAuth to existing user
-        await this.usersService.linkOAuth(
-          user.id,
-          provider,
-          oauthId,
-          encryptedToken,
-        );
+        await this.usersService.linkOAuth(user.id, provider, oauthId, encryptedToken);
       } else {
         // 3. Create new user
         const encryptedEmail = this.protectionUtil.encrypt(email);
@@ -262,10 +228,7 @@ export class OAuthService {
     });
 
     // Generate tokens
-    const { accessToken, refreshToken } = this.tokenService.generateTokens(
-      user.id,
-      user.username,
-    );
+    const { accessToken, refreshToken } = this.tokenService.generateTokens(user.id, user.username);
 
     // Store session with fingerprint
     const fingerprint = this.protectionUtil.hash(`${ip}:${userAgent}`);
@@ -276,10 +239,7 @@ export class OAuthService {
 
   async unlinkOAuth(userId: bigint, provider: OAuthProvider): Promise<void> {
     // 1. Retrieve stored encrypted token
-    const encryptedToken = await this.usersService.getOAuthToken(
-      userId,
-      provider,
-    );
+    const encryptedToken = await this.usersService.getOAuthToken(userId, provider);
 
     // 2. Revoke token at provider (best-effort)
     if (encryptedToken) {
@@ -289,9 +249,7 @@ export class OAuthService {
           this.logger.log(`Success to revoke ${provider}`);
         })
         .catch((err) => {
-          this.logger.warn(
-            `Failed to revoke ${provider} token for user ${userId}: ${err.message}`,
-          );
+          this.logger.warn(`Failed to revoke ${provider} token for user ${userId}: ${err.message}`);
         });
     }
 
@@ -299,36 +257,24 @@ export class OAuthService {
     await this.usersService.unlinkOAuth(userId, provider);
   }
 
-  private async revokeOAuthToken(
-    provider: OAuthProvider,
-    token: string,
-  ): Promise<void> {
+  private async revokeOAuthToken(provider: OAuthProvider, token: string): Promise<void> {
     if (provider === OAuthProvider.GITHUB) {
       const clientId = this.customEnvService.get<string>('GITHUB_CLIENT_ID');
-      const clientSecret = this.customEnvService.get<string>(
-        'GITHUB_CLIENT_SECRET',
-      );
-      const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString(
-        'base64',
-      );
+      const clientSecret = this.customEnvService.get<string>('GITHUB_CLIENT_SECRET');
+      const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
 
-      const response = await fetch(
-        `https://api.github.com/applications/${clientId}/token`,
-        {
-          method: 'DELETE',
-          headers: {
-            Authorization: `Basic ${credentials}`,
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ access_token: token }),
+      const response = await fetch(`https://api.github.com/applications/${clientId}/token`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Basic ${credentials}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
         },
-      );
+        body: JSON.stringify({ access_token: token }),
+      });
 
       if (!response.ok && response.status !== 422) {
-        throw new Error(
-          `GitHub token revocation failed with status ${response.status}`,
-        );
+        throw new Error(`GitHub token revocation failed with status ${response.status}`);
       }
     } else if (provider === OAuthProvider.GOOGLE) {
       const response = await fetch(
@@ -342,9 +288,7 @@ export class OAuthService {
       );
 
       if (!response.ok && response.status !== 400) {
-        throw new Error(
-          `Google token revocation failed with status ${response.status}`,
-        );
+        throw new Error(`Google token revocation failed with status ${response.status}`);
       }
     }
   }
@@ -360,15 +304,11 @@ export class OAuthService {
     }
   }
 
-  private async verifyAppleIdToken(
-    idToken: string,
-  ): Promise<Record<string, unknown> | null> {
+  private async verifyAppleIdToken(idToken: string): Promise<Record<string, unknown> | null> {
     try {
       // Decode header to get kid
       const headerB64 = idToken.split('.')[0];
-      const header = JSON.parse(
-        Buffer.from(headerB64, 'base64url').toString('utf-8'),
-      );
+      const header = JSON.parse(Buffer.from(headerB64, 'base64url').toString('utf-8'));
       const kid = header.kid;
 
       // Fetch Apple's JWKS
@@ -391,24 +331,16 @@ export class OAuthService {
       const data = `${headerPart}.${payloadPart}`;
       const signature = Buffer.from(signaturePart, 'base64url');
 
-      const isValid = crypto.verify(
-        'RSA-SHA256',
-        Buffer.from(data),
-        publicKey,
-        signature,
-      );
+      const isValid = crypto.verify('RSA-SHA256', Buffer.from(data), publicKey, signature);
 
       if (!isValid) {
         throw new Error('Invalid Apple id_token signature');
       }
 
       // Verify claims
-      const payload = JSON.parse(
-        Buffer.from(payloadPart, 'base64url').toString('utf-8'),
-      );
+      const payload = JSON.parse(Buffer.from(payloadPart, 'base64url').toString('utf-8'));
 
-      const appleClientId =
-        this.customEnvService.get<string>('APPLE_CLIENT_ID');
+      const appleClientId = this.customEnvService.get<string>('APPLE_CLIENT_ID');
 
       if (payload.iss !== 'https://appleid.apple.com') {
         throw new Error('Invalid issuer');

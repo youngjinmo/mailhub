@@ -10,9 +10,7 @@ export class S3Service {
 
   constructor(private readonly customEnvService: CustomEnvService) {
     const accessKeyId = this.customEnvService.get<string>('AWS_ACCESS_KEY_ID');
-    const secretAccessKey = this.customEnvService.get<string>(
-      'AWS_SECRET_ACCESS_KEY',
-    );
+    const secretAccessKey = this.customEnvService.get<string>('AWS_SECRET_ACCESS_KEY');
     const region = this.customEnvService.get<string>('AWS_REGION');
 
     this.s3Client = new S3Client({
@@ -50,10 +48,7 @@ export class S3Service {
         stream.on('end', () => resolve(Buffer.concat(chunks)));
       });
     } catch (error) {
-      this.logger.error(
-        `Failed to get object from S3: ${error.message}`,
-        error.stack,
-      );
+      this.logger.error(`Failed to get object from S3: ${error.message}`, error.stack);
       throw error;
     }
   }

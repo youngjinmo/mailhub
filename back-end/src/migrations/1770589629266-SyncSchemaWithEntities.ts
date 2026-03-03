@@ -8,9 +8,7 @@ export class SyncSchemaWithEntities1770589629266 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE \`relay_emails\` DROP FOREIGN KEY \`FK_relay_emails_user\``,
     );
-    await queryRunner.query(
-      `DROP INDEX \`idx_relay_address\` ON \`relay_emails\``,
-    );
+    await queryRunner.query(`DROP INDEX \`idx_relay_address\` ON \`relay_emails\``);
     await queryRunner.query(`DROP INDEX \`UQ_username_hash\` ON \`users\``);
 
     // Modify column types safely (MODIFY instead of DROP+ADD to preserve data)
@@ -20,9 +18,7 @@ export class SyncSchemaWithEntities1770589629266 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE \`relay_emails\` MODIFY COLUMN \`relay_email\` varchar(255) NOT NULL`,
     );
-    await queryRunner.query(
-      `ALTER TABLE \`relay_emails\` MODIFY COLUMN \`description\` text NULL`,
-    );
+    await queryRunner.query(`ALTER TABLE \`relay_emails\` MODIFY COLUMN \`description\` text NULL`);
     await queryRunner.query(
       `ALTER TABLE \`relay_emails\` CHANGE \`created_at\` \`created_at\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)`,
     );
@@ -71,15 +67,9 @@ export class SyncSchemaWithEntities1770589629266 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE \`relay_emails\` DROP FOREIGN KEY \`FK_c994626f9143f8e2cd72a6879c6\``,
     );
-    await queryRunner.query(
-      `DROP INDEX \`idx_relay_email\` ON \`relay_emails\``,
-    );
-    await queryRunner.query(
-      `DROP INDEX \`idx_primary_email\` ON \`relay_emails\``,
-    );
-    await queryRunner.query(
-      `ALTER TABLE \`users\` DROP INDEX \`IDX_c7a1485d3f23b1b6d5a565813d\``,
-    );
+    await queryRunner.query(`DROP INDEX \`idx_relay_email\` ON \`relay_emails\``);
+    await queryRunner.query(`DROP INDEX \`idx_primary_email\` ON \`relay_emails\``);
+    await queryRunner.query(`ALTER TABLE \`users\` DROP INDEX \`IDX_c7a1485d3f23b1b6d5a565813d\``);
 
     // Revert column types
     await queryRunner.query(
