@@ -10,7 +10,7 @@ import { AwsModule } from '../aws/aws.module';
 import { MailModule } from 'src/mail/mail.module';
 import { CustomEnvService } from '../config/custom-env.service';
 import { ProtectionUtil } from 'src/common/utils/protection.util';
-import { ACCESS_TOKEN_EXPIRATION } from './auth.policy';
+import { ACCESS_TOKEN_TTL } from 'src/common/utils/policy';
 
 @Module({
   imports: [
@@ -21,7 +21,7 @@ import { ACCESS_TOKEN_EXPIRATION } from './auth.policy';
         return {
           secret,
           signOptions: {
-            expiresIn: `${ACCESS_TOKEN_EXPIRATION}ms`,
+            expiresIn: `${ACCESS_TOKEN_TTL}ms`,
           },
         };
       },

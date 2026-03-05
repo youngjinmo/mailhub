@@ -2,7 +2,7 @@ import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { CacheRepository } from './cache.repository';
 import { CustomEnvService } from 'src/config/custom-env.service';
 import { SetRelayMailCacheDto } from 'src/relay-emails/dto/set-relay-mail-cache.dto';
-import { REFRESH_TOKEN_EXPIRATION } from 'src/auth/auth.policy';
+import { REFRESH_TOKEN_TTL } from 'src/common/utils/policy';
 
 @Injectable()
 export class CacheService {
@@ -46,7 +46,7 @@ export class CacheService {
 
   async setSession(refreshToken: string, clientFingerprint: string): Promise<void> {
     const key = this.getSessionKey(refreshToken);
-    await this.cacheRepository.set(key, clientFingerprint, REFRESH_TOKEN_EXPIRATION);
+    await this.cacheRepository.set(key, clientFingerprint, REFRESH_TOKEN_TTL);
   }
 
   async delSession(token: string): Promise<void> {
