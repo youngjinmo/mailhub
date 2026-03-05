@@ -17,7 +17,6 @@ import { SendVerificationCodeDto } from './dto/send-verification-code.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { OAuthGithubDto, OAuthGoogleDto, OAuthAppleDto } from './dto/oauth-login.dto';
 import { UnlinkOAuthDto } from '../users/dto/unlink-oauth.dto';
-import { REFRESH_TOKEN_EXPIRATION } from './auth.policy';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser, type CurrentUserPayload } from '../common/decorators/current-user.decorator';
 import { LoginDto } from './dto/login.dto';
@@ -185,7 +184,7 @@ export class AuthController {
       httpOnly: true,
       secure: true,
       sameSite: 'strict',
-      maxAge: REFRESH_TOKEN_EXPIRATION,
+      maxAge: REFRESH_TOKEN_TTL,
       path: '/',
     });
   }
