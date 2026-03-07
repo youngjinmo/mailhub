@@ -20,6 +20,7 @@ import { ProtectionUtil } from 'src/common/utils/protection.util';
 import { generateRandomRelayUsername } from 'src/common/utils/relay-email.util';
 import { User } from 'src/users/entities/user.entity';
 import { isProTier } from 'src/common/utils/permission.util';
+import { ReplyEmailsService } from './reply-emails.service';
 
 @Injectable()
 export class RelayEmailsService {
@@ -30,6 +31,7 @@ export class RelayEmailsService {
     @InjectRepository(RelayEmail)
     private readonly relayEmailRepository: Repository<RelayEmail>,
     private readonly customEnvService: CustomEnvService,
+    private readonly replyMaskEmailService: ReplyEmailsService,
     private readonly s3Service: S3Service,
     private readonly sqsService: SqsService,
     private readonly sendMailService: SendMailService,
@@ -241,31 +243,48 @@ export class RelayEmailsService {
       const parseElapsed = Date.now() - parseStartTime;
 
       // Extract relay address (to address)
-      const relayEmail = this.getOriginalRecipient(parsedMail);
-      if (!relayEmail) {
+      const recipientEmail = this.getOriginalRecipient(parsedMail);
+      if (!recipientEmail) {
         this.logger.warn('No recipient address found in email');
         return;
       }
 
-      // Find relay email entity from database
+      // Find primary email from database
       const dbStartTime = Date.now();
-      const relayEmailEntity = await this.relayEmailRepository.findOne({
-        where: { relayEmail },
-      });
+      let primaryEmail: string | null;
+      let relayEmail: string;
+
+      if (recipientEmail.startsWith('reply-')) {
+        // Reply masking address: look up ReplyMaskings to find the original sender
+        const replyMasking = await this.replyMaskEmailService.findReplyMaskingEmail(recipientEmail);
+        relayEmail = recipientEmail;
+
+        if (!replyMasking) {
+          this.logger.warn(`No reply masking entity found for address: ${recipientEmail}`);
+          return;
+        }
+
+        primaryEmail = this.encryptionUtil.decrypt(replyMasking.senderAddress);
+      } else {
+        // Regular relay address: look up relay_emails table
+        const relayEmailEntity = await this.relayEmailRepository.findOne({
+          where: { relayEmail: recipientEmail },
+        });
+
+        if (!relayEmailEntity) {
+          this.logger.warn(`No relay email entity found for address: ${recipientEmail}`);
+          return;
+        }
+
+        if (!relayEmailEntity.isActive) {
+          this.logger.log(`Relay email is not active, skipping forward: ${recipientEmail}`);
+          return;
+        }
+
+        primaryEmail = this.encryptionUtil.decrypt(relayEmailEntity.primaryEmail);
+        relayEmail = recipientEmail;
+      }
       const dbElapsed = Date.now() - dbStartTime;
-
-      if (!relayEmailEntity) {
-        this.logger.warn(`No relay email entity found for address: ${relayEmail}`);
-        return;
-      }
-
-      if (!relayEmailEntity.isActive) {
-        this.logger.log(`Relay email is not active, skipping forward: ${relayEmail}`);
-        return;
-      }
-
-      // Decrypt primary email
-      const primaryEmail = this.encryptionUtil.decrypt(relayEmailEntity.primaryEmail);
 
       // Forward email to primary address
       const forwardStartTime = Date.now();
@@ -300,6 +319,20 @@ export class RelayEmailsService {
 
       if (!originalSenderAddress) {
         throw new BadRequestException('Sender address not found');
+      }
+
+      let replyMaskEmail: string;
+      try {
+        const res = await this.replyMaskEmailService.create(
+          originalSenderAddress,
+          relayEmailAddress,
+        );
+        replyMaskEmail = res.replyAddress;
+      } catch (err) {
+        this.logger.error(
+          `failed to get reply mask email address when forward mail by ${err.message}`,
+        );
+        replyMaskEmail = originalSenderAddress;
       }
 
       const from = `${originalSenderAddress} [via Mailhub] <${relayEmailAddress}>`;
@@ -365,12 +398,12 @@ export class RelayEmailsService {
         this.logger.log(`Forwarding email with ${attachments.length} attachment(s)`);
       }
 
-      // Send email via SES (HTML only)
+      // Send email (HTML only)
       await this.sendMailService.sendMail({
         to: primaryEmailAddress, // primary email address
         from, // relay email address with display name
         resentFrom: relayEmailAddress, // relay email address
-        replyTo: originalSenderAddress, // original sender email address
+        replyTo: replyMaskEmail, // original sender email address
         subject,
         htmlBody,
         attachments: attachments.length > 0 ? attachments : undefined,
@@ -580,4 +613,3 @@ export class RelayEmailsService {
     }
   }
 }
-

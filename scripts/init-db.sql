@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS users (
   deactivated_at DATETIME NULL,
   deleted_at DATETIME NULL,
   last_logined_at DATETIME NULL,
-  INDEX idx_username (username)
+  INDEX idx_username (username_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Relay Emails table
@@ -37,6 +37,20 @@ CREATE TABLE IF NOT EXISTS relay_emails (
   INDEX idx_primary_email (primary_email),
   INDEX idx_relay_email (relay_email),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Reply Maskings table
+CREATE TABLE IF NOT EXISTS reply_maskings (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  reply_address VARCHAR(255) NOT NULL,
+  sender_address_hash VARCHAR(255) NOT NULL,
+  sender_address VARCHAR(255) NOT NULL,
+  receiver_address_hash VARCHAR(255) NOT NULL,
+  receiver_address VARCHAR(255) NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  last_used_at DATETIME NULL,
+  INDEX idx_reply_address (reply_address),
+  INDEX idx_sender_receiver_hash (sender_address_hash, receiver_address_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Verify tables

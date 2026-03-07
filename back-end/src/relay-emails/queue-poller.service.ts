@@ -5,7 +5,6 @@ import { RelayEmailsService } from 'src/relay-emails/relay-emails.service';
 @Injectable()
 export class QueuePollerService implements OnModuleInit {
   private readonly logger = new Logger(QueuePollerService.name);
-  private isProcessing = false;
   private isWorkerMode = false;
 
   constructor(private readonly relayEmailService: RelayEmailsService) {}
@@ -23,26 +22,16 @@ export class QueuePollerService implements OnModuleInit {
     this.logger.log('Queue polling will run every 30 seconds');
   }
 
-  @Cron(CronExpression.EVERY_30_SECONDS)
+  @Cron(CronExpression.EVERY_10_SECONDS)
   async pollSQS() {
     // Skip polling if not in worker mode
     if (!this.isWorkerMode) {
       return;
     }
-
-    if (this.isProcessing) {
-      this.logger.debug('Previous poll is still processing, skipping...');
-      return;
-    }
-
-    this.isProcessing = true;
-
     try {
       await this.relayEmailService.processIncomingEmails();
     } catch (error) {
       this.logger.error(`Failed to poll SQS: ${error.message}`, error.stack);
-    } finally {
-      this.isProcessing = false;
     }
   }
 }

@@ -61,6 +61,10 @@ export class SesService {
       subject: dto.subject,
     };
 
+    if (dto.replyTo) {
+      mailOptions.replyTo = dto.replyTo;
+    }
+
     // Add HTML body if present
     if (dto.htmlBody) {
       mailOptions.html = dto.htmlBody;
@@ -158,6 +162,7 @@ export class SesService {
       Destination: {
         ToAddresses: [dto.to],
       },
+      ...(dto.replyTo && { ReplyToAddresses: [dto.replyTo] }),
       Message: {
         Subject: {
           Data: dto.subject,

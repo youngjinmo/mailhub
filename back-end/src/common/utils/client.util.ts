@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import type { Request } from 'express';
 
 interface ClientInfo {
@@ -6,14 +5,9 @@ interface ClientInfo {
   userAgent: string;
 }
 
-@Injectable()
-export class ClientUtil {
-  constructor() {}
-
-  getClientInfo(request: Request): ClientInfo {
-    return {
-      ip: request.ip || request.socket.remoteAddress || '',
-      userAgent: request.headers['user-agent'] || '',
-    };
-  }
+export function getClientInfo(request: Request): ClientInfo {
+  return {
+    ip: request.ip || request.socket.remoteAddress || '',
+    userAgent: request.headers['user-agent'] || '',
+  };
 }
