@@ -251,39 +251,48 @@ export class RelayEmailsService {
 
       // Find primary email from database
       const dbStartTime = Date.now();
-      let primaryEmail: string | null;
-      let relayEmail: string;
 
+      // When the user replies via reply masking address
       if (recipientEmail.startsWith('reply-')) {
-        // Reply masking address: look up ReplyMaskings to find the original sender
         const replyMasking = await this.replyMaskEmailService.findReplyMaskingEmail(recipientEmail);
-        relayEmail = recipientEmail;
 
         if (!replyMasking) {
-          this.logger.warn(`No reply masking entity found for address: ${recipientEmail}`);
+          this.logger.error(`No reply masking entity found for address: ${recipientEmail}`);
           return;
         }
 
-        primaryEmail = this.encryptionUtil.decrypt(replyMasking.senderAddress);
-      } else {
-        // Regular relay address: look up relay_emails table
-        const relayEmailEntity = await this.relayEmailRepository.findOne({
-          where: { relayEmail: recipientEmail },
-        });
+        const originalSender = this.encryptionUtil.decrypt(replyMasking.senderAddress);
+        const relayAddress = this.encryptionUtil.decrypt(replyMasking.receiverAddress);
+        const dbElapsed = Date.now() - dbStartTime;
 
-        if (!relayEmailEntity) {
-          this.logger.warn(`No relay email entity found for address: ${recipientEmail}`);
-          return;
-        }
+        const forwardStartTime = Date.now();
+        await this.relayReplyToOriginalSender(originalSender, relayAddress, parsedMail);
 
-        if (!relayEmailEntity.isActive) {
-          this.logger.log(`Relay email is not active, skipping forward: ${recipientEmail}`);
-          return;
-        }
-
-        primaryEmail = this.encryptionUtil.decrypt(relayEmailEntity.primaryEmail);
-        relayEmail = recipientEmail;
+        const forwardElapsed = Date.now() - forwardStartTime;
+        const totalElapsed = Date.now() - startTime;
+        this.logger.log(
+          `Reply relayed in ${totalElapsed}ms (S3: ${s3Elapsed}ms, Parse: ${parseElapsed}ms, DB: ${dbElapsed}ms, Forward: ${forwardElapsed}ms) - ${key}`,
+        );
+        return;
       }
+
+      // Regular relay address: look up relay_emails table
+      const relayEmailEntity = await this.relayEmailRepository.findOne({
+        where: { relayEmail: recipientEmail },
+      });
+
+      if (!relayEmailEntity) {
+        this.logger.warn(`No relay email entity found for address: ${recipientEmail}`);
+        return;
+      }
+
+      if (!relayEmailEntity.isActive) {
+        this.logger.log(`Relay email is not active, skipping forward: ${recipientEmail}`);
+        return;
+      }
+
+      const primaryEmail = this.encryptionUtil.decrypt(relayEmailEntity.primaryEmail);
+      const relayEmail = recipientEmail;
       const dbElapsed = Date.now() - dbStartTime;
 
       // Forward email to primary address
@@ -419,6 +428,46 @@ export class RelayEmailsService {
       );
 
       return;
+    }
+  }
+
+  private async relayReplyToOriginalSender(
+    originalSenderAddress: string,
+    relayAddress: string,
+    mail: ParsedMail,
+  ) {
+    try {
+      const subject = mail?.subject || '(No Subject)';
+      const from = relayAddress;
+
+      let htmlBody: string | undefined;
+      let textBody: string | undefined;
+
+      if (mail?.html) {
+        htmlBody = typeof mail.html === 'string' ? mail.html : undefined;
+      }
+      if (mail?.text) {
+        textBody = mail.text;
+      }
+
+      const attachments = this.parseAttachments(mail);
+
+      await this.sendMailService.sendMail({
+        to: originalSenderAddress,
+        from,
+        replyTo: relayAddress,
+        subject,
+        htmlBody,
+        textBody: !htmlBody ? textBody : undefined,
+        attachments: attachments.length > 0 ? attachments : undefined,
+      });
+
+      this.logger.log(`Reply relayed from ${relayAddress} to ${originalSenderAddress}`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to relay reply to ${originalSenderAddress} via ${relayAddress}, error=${(error as Error).message}`,
+        (error as Error).stack,
+      );
     }
   }
 
