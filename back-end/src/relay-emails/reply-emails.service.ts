@@ -2,10 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ReplyMasking } from './entities/reply-masking.entity';
-import { CacheService } from 'src/cache/cache.service';
 import { ProtectionUtil } from 'src/common/utils/protection.util';
 import { CustomEnvService } from 'src/config/custom-env.service';
-import { REFRESH_TOKEN_TTL } from 'src/common/utils/policy';
 
 @Injectable()
 export class ReplyEmailsService {
@@ -15,12 +13,17 @@ export class ReplyEmailsService {
     @InjectRepository(ReplyMasking)
     private readonly replyMasingRepository: Repository<ReplyMasking>,
     private readonly protectionUtil: ProtectionUtil,
-    private readonly cacheService: CacheService,
     private readonly customEnvService: CustomEnvService,
   ) {}
 
-  async findReplyMaskingEmail(sender: string, receiver?: string): Promise<ReplyMasking | null> {
-    const replyAddress = receiver ? this.generateReplyMaskingEmail(sender, receiver) : sender;
+  async findByReplyAddress(replyAddress: string): Promise<ReplyMasking | null> {
+    return await this.replyMasingRepository.findOne({
+      where: { replyAddress },
+    });
+  }
+
+  async findBySenderAndReceiver(sender: string, receiver: string): Promise<ReplyMasking | null> {
+    const replyAddress = this.generateReplyMaskingEmail(sender, receiver);
     return await this.replyMasingRepository.findOne({
       where: { replyAddress },
     });
@@ -28,10 +31,7 @@ export class ReplyEmailsService {
 
   async create(sender: string, receiver: string): Promise<ReplyMasking> {
     // check if its existing
-    const existing = await this.findReplyMaskingEmail(sender, receiver).catch((err) => {
-      this.logger.debug(`failed to find reply masking email, by ${err.message}`, err.stack);
-      return null;
-    });
+    const existing = await this.findBySenderAndReceiver(sender, receiver);
 
     if (existing) {
       return existing;
@@ -46,21 +46,6 @@ export class ReplyEmailsService {
       receiverAddress: this.protectionUtil.encrypt(receiver),
       receiverAddressHash: this.protectionUtil.hash(receiver),
     });
-    this.logger.log('created reply email address');
-
-    // store cache
-    await this.cacheService
-      .set(
-        replyAddress,
-        {
-          sender,
-          receiver,
-        },
-        REFRESH_TOKEN_TTL, // 7 days
-      )
-      .catch((err) => {
-        this.logger.debug(`failed to set cache reply email address, by ${err.message}`);
-      });
 
     return this.replyMasingRepository.save(entity);
   }

@@ -6,6 +6,7 @@ import { RelayEmailsService } from 'src/relay-emails/relay-emails.service';
 export class QueuePollerService implements OnModuleInit {
   private readonly logger = new Logger(QueuePollerService.name);
   private isWorkerMode = false;
+  private isProcessing = false;
 
   constructor(private readonly relayEmailService: RelayEmailsService) {}
 
@@ -24,14 +25,17 @@ export class QueuePollerService implements OnModuleInit {
 
   @Cron(CronExpression.EVERY_10_SECONDS)
   async pollSQS() {
-    // Skip polling if not in worker mode
-    if (!this.isWorkerMode) {
+    // Skip polling if not in worker mode or already processing
+    if (!this.isWorkerMode || this.isProcessing) {
       return;
     }
+    this.isProcessing = true;
     try {
       await this.relayEmailService.processIncomingEmails();
     } catch (error) {
       this.logger.error(`Failed to poll SQS: ${error.message}`, error.stack);
+    } finally {
+      this.isProcessing = false;
     }
   }
 }

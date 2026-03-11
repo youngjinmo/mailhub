@@ -20,9 +20,13 @@ export class AddReplyMaskingTable1770800000000 implements MigrationInterface {
     await queryRunner.query(
       `CREATE INDEX \`idx_reply_address\` ON \`reply_maskings\` (\`reply_address\`)`,
     );
+    await queryRunner.query(
+      `CREATE INDEX \`idx_sender_receiver_hash\` ON \`reply_maskings\` (\`sender_address_hash\`, \`receiver_address_hash\`)`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`DROP INDEX \`idx_sender_receiver_hash\` ON \`reply_maskings\``);
     await queryRunner.query(`DROP INDEX \`idx_reply_address\` ON \`reply_maskings\``);
     await queryRunner.query(`DROP TABLE \`reply_maskings\``);
   }

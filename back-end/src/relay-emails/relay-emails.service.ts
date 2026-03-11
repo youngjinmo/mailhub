@@ -254,7 +254,7 @@ export class RelayEmailsService {
 
       // When the user replies via reply masking address
       if (recipientEmail.startsWith('reply-')) {
-        const replyMasking = await this.replyMaskEmailService.findReplyMaskingEmail(recipientEmail);
+        const replyMasking = await this.replyMaskEmailService.findByReplyAddress(recipientEmail);
 
         if (!replyMasking) {
           this.logger.error(`No reply masking entity found for address: ${recipientEmail}`);
