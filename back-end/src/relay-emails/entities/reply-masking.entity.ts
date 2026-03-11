@@ -1,6 +1,7 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('reply_maskings')
+@Index('idx_sender_receiver_hash', ['senderAddressHash', 'receiverAddressHash'])
 export class ReplyMasking {
   @PrimaryGeneratedColumn({ type: 'bigint' })
   id: bigint;
