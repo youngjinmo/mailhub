@@ -11,35 +11,36 @@ export class ReplyEmailsService {
 
   constructor(
     @InjectRepository(ReplyMasking)
-    private readonly replyMasingRepository: Repository<ReplyMasking>,
+    private readonly replyMaskingRepository: Repository<ReplyMasking>,
     private readonly protectionUtil: ProtectionUtil,
     private readonly customEnvService: CustomEnvService,
   ) {}
 
   async findByReplyAddress(replyAddress: string): Promise<ReplyMasking | null> {
-    return await this.replyMasingRepository.findOne({
+    return await this.replyMaskingRepository.findOne({
       where: { replyAddress },
     });
   }
 
   async findBySenderAndReceiver(sender: string, receiver: string): Promise<ReplyMasking | null> {
     const replyAddress = this.generateReplyMaskingEmail(sender, receiver);
-    return await this.replyMasingRepository.findOne({
+    return await this.replyMaskingRepository.findOne({
       where: { replyAddress },
     });
   }
 
   async create(sender: string, receiver: string): Promise<ReplyMasking> {
+    const replyAddress = this.generateReplyMaskingEmail(sender, receiver);
+
     // check if its existing
-    const existing = await this.findBySenderAndReceiver(sender, receiver);
+    const existing = await this.replyMaskingRepository.findOne({ where: { replyAddress } });
 
     if (existing) {
       return existing;
     }
 
     // create
-    const replyAddress = this.generateReplyMaskingEmail(sender, receiver);
-    const entity = this.replyMasingRepository.create({
+    const entity = this.replyMaskingRepository.create({
       replyAddress,
       senderAddress: this.protectionUtil.encrypt(sender),
       senderAddressHash: this.protectionUtil.hash(sender),
@@ -47,7 +48,7 @@ export class ReplyEmailsService {
       receiverAddressHash: this.protectionUtil.hash(receiver),
     });
 
-    return this.replyMasingRepository.save(entity);
+    return this.replyMaskingRepository.save(entity);
   }
 
   private generateReplyMaskingEmail(sender: string, receiver: string): string {

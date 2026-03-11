@@ -341,7 +341,7 @@ export class RelayEmailsService {
         this.logger.error(
           `failed to get reply mask email address when forward mail by ${err.message}`,
         );
-        replyMaskEmail = originalSenderAddress;
+        replyMaskEmail = relayEmailAddress;
       }
 
       const from = `${originalSenderAddress} [via Mailhub] <${relayEmailAddress}>`;
@@ -423,7 +423,7 @@ export class RelayEmailsService {
     } catch (error) {
       const fromAddress = mail?.from?.text ?? 'unknown';
       this.logger.error(
-        `Failed to forward email to ${primaryEmailAddress} from ${fromAddress}, error=${(error as Error).message}`,
+        `Failed to forward email to ${this.maskEmail(primaryEmailAddress)} from ${this.maskEmail(fromAddress)}, error=${(error as Error).message}`,
         (error as Error).stack,
       );
 
@@ -458,17 +458,23 @@ export class RelayEmailsService {
         replyTo: relayAddress,
         subject,
         htmlBody,
-        textBody: !htmlBody ? textBody : undefined,
+        textBody,
         attachments: attachments.length > 0 ? attachments : undefined,
       });
 
-      this.logger.log(`Reply relayed from ${relayAddress} to ${originalSenderAddress}`);
+      this.logger.log(`Reply relayed from ${this.maskEmail(relayAddress)} to ${this.maskEmail(originalSenderAddress)}`);
     } catch (error) {
       this.logger.error(
-        `Failed to relay reply to ${originalSenderAddress} via ${relayAddress}, error=${(error as Error).message}`,
+        `Failed to relay reply to ${this.maskEmail(originalSenderAddress)} via ${this.maskEmail(relayAddress)}, error=${(error as Error).message}`,
         (error as Error).stack,
       );
     }
+  }
+
+  private maskEmail(email: string): string {
+    const atIndex = email.indexOf('@');
+    if (atIndex <= 1) return '***';
+    return email[0] + '*'.repeat(Math.min(atIndex - 1, 5)) + email.substring(atIndex);
   }
 
   /**
