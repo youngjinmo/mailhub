@@ -462,7 +462,9 @@ export class RelayEmailsService {
         attachments: attachments.length > 0 ? attachments : undefined,
       });
 
-      this.logger.log(`Reply relayed from ${this.maskEmail(relayAddress)} to ${this.maskEmail(originalSenderAddress)}`);
+      this.logger.log(
+        `Reply relayed from ${this.maskEmail(relayAddress)} to ${this.maskEmail(originalSenderAddress)}`,
+      );
     } catch (error) {
       this.logger.error(
         `Failed to relay reply to ${this.maskEmail(originalSenderAddress)} via ${this.maskEmail(relayAddress)}, error=${(error as Error).message}`,
@@ -578,7 +580,10 @@ export class RelayEmailsService {
     }
 
     relayEmail.description = description;
-    return await this.relayEmailRepository.save(relayEmail);
+    return await this.relayEmailRepository.save(relayEmail).then((res) => {
+      this.logger.log(`Updated description for relay email ${id}`);
+      return res;
+    });
   }
 
   async updateActiveStatus(id: bigint, userId: bigint, isActive: boolean): Promise<RelayEmail> {
@@ -603,7 +608,10 @@ export class RelayEmailsService {
     }
 
     relayEmailEntity.isActive = isActive;
-    return await this.relayEmailRepository.save(relayEmailEntity);
+    return await this.relayEmailRepository.save(relayEmailEntity).then((res) => {
+      this.logger.log(`Updated active status for relay email ${id}`);
+      return res;
+    });
   }
 
   private getSender(mail: ParsedMail): string {
