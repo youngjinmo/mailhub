@@ -21,14 +21,6 @@ export class ReplyEmailsService {
       where: { replyAddress },
     });
   }
-
-  async findBySenderAndReceiver(sender: string, receiver: string): Promise<ReplyMasking | null> {
-    const replyAddress = this.generateReplyMaskingEmail(sender, receiver);
-    return await this.replyMaskingRepository.findOne({
-      where: { replyAddress },
-    });
-  }
-
   async create(sender: string, receiver: string): Promise<ReplyMasking> {
     const replyAddress = this.generateReplyMaskingEmail(sender, receiver);
 
