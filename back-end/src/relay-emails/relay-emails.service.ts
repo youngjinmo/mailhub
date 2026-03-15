@@ -54,7 +54,7 @@ export class RelayEmailsService {
     let exists = true;
 
     while (exists) {
-      const randomUsername = generateRandomRelayUsername(16);
+      const randomUsername = generateRandomRelayUsername();
       relayEmail = `${randomUsername}@${this.customEnvService.get<string>('APP_DOMAIN')}`;
 
       // Check if this relay address already exists
