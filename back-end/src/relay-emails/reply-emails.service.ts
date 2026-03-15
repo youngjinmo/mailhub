@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { ReplyMasking } from './entities/reply-masking.entity';
 import { ProtectionUtil } from 'src/common/utils/protection.util';
 import { CustomEnvService } from 'src/config/custom-env.service';
+import { formatWithHyphens } from 'src/common/utils/relay-email.util';
 
 @Injectable()
 export class ReplyEmailsService {
@@ -45,6 +46,8 @@ export class ReplyEmailsService {
 
   private generateReplyMaskingEmail(sender: string, receiver: string): string {
     const domain = this.customEnvService.get<string>('APP_DOMAIN') || 'private-mailhub.com';
-    return 'reply-'.concat(this.protectionUtil.hash(`${sender}:${receiver}`)).concat(`@${domain}`);
+    const hash = this.protectionUtil.hash(`${sender}:${receiver}`);
+    const formattedHash = formatWithHyphens(hash.slice(0, 15));
+    return `reply-${formattedHash}@${domain}`;
   }
 }
