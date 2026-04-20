@@ -4,6 +4,7 @@ import { RelayEmailsController } from './relay-emails.controller';
 import { RelayEmailsService } from './relay-emails.service';
 import { RelayEmail } from './entities/relay-email.entity';
 import { ReplyMasking } from './entities/reply-masking.entity';
+import { ForwardEvent } from './entities/forward-event.entity';
 import { CacheModule } from '../cache/cache.module';
 import { UsersModule } from '../users/users.module';
 import { AwsModule } from '../aws/aws.module';
@@ -15,7 +16,7 @@ import { ReplyEmailsService } from './reply-emails.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([RelayEmail, ReplyMasking]),
+    TypeOrmModule.forFeature([RelayEmail, ReplyMasking, ForwardEvent]),
     CacheModule,
     UsersModule,
     AwsModule,

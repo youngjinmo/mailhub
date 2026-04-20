@@ -53,5 +53,15 @@ CREATE TABLE IF NOT EXISTS reply_maskings (
   INDEX idx_sender_receiver_hash (sender_address_hash, receiver_address_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Forward Events table
+CREATE TABLE IF NOT EXISTS forward_events (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  relay_email_id BIGINT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  INDEX idx_forward_events_relay_email_id (relay_email_id),
+  INDEX idx_forward_events_created_at (created_at),
+  FOREIGN KEY (relay_email_id) REFERENCES relay_emails(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Verify tables
 SHOW TABLES;

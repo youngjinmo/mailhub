@@ -13,6 +13,7 @@ import { AdminModule } from './admin/admin.module';
 import { User } from './users/entities/user.entity';
 import { RelayEmail } from './relay-emails/entities/relay-email.entity';
 import { ReplyMasking } from './relay-emails/entities/reply-masking.entity';
+import { ForwardEvent } from './relay-emails/entities/forward-event.entity';
 import { AuthGuard } from './common/guards/auth.guard';
 
 @Module({
@@ -28,7 +29,7 @@ import { AuthGuard } from './common/guards/auth.guard';
       database: process.env.DATABASE_NAME,
       username: process.env.DATABASE_USERNAME,
       password: process.env.DATABASE_PASSWORD,
-      entities: [User, RelayEmail, ReplyMasking],
+      entities: [User, RelayEmail, ReplyMasking, ForwardEvent],
       synchronize: false,
       logging: process.env.NODE_ENV === 'production',
     }),

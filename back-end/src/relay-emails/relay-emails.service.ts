@@ -21,6 +21,7 @@ import { generateRandomRelayUsername } from 'src/common/utils/relay-email.util';
 import { User } from 'src/users/entities/user.entity';
 import { isProTier } from 'src/common/utils/permission.util';
 import { ReplyEmailsService } from './reply-emails.service';
+import { ForwardEvent } from './entities/forward-event.entity';
 
 @Injectable()
 export class RelayEmailsService {
@@ -555,15 +556,32 @@ export class RelayEmailsService {
   }
 
   async incrementForwardCount(relayEmail: string): Promise<void> {
-    await this.relayEmailRepository
-      .createQueryBuilder()
-      .update(RelayEmail)
-      .set({
-        forwardCount: () => 'forward_count + 1',
-        lastForwardedAt: new Date(),
-      })
-      .where('relay_email = :relayEmail', { relayEmail })
-      .execute();
+    const relayEmailEntity = await this.relayEmailRepository.findOne({
+      where: { relayEmail },
+      select: ['id'],
+    });
+
+    if (!relayEmailEntity) {
+      return;
+    }
+
+    await this.relayEmailRepository.manager.transaction(async (manager) => {
+      await manager
+        .createQueryBuilder()
+        .update(RelayEmail)
+        .set({
+          forwardCount: () => 'forward_count + 1',
+          lastForwardedAt: new Date(),
+        })
+        .where('id = :id', { id: relayEmailEntity.id })
+        .execute();
+
+      const forwardEvent = manager.create(ForwardEvent, {
+        relayEmail: relayEmailEntity,
+      });
+
+      await manager.save(forwardEvent);
+    });
   }
 
   async countByUser(userId: bigint): Promise<number> {

@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { MoreThanOrEqual, Repository } from 'typeorm';
 import { User } from '../users/entities/user.entity';
 import { RelayEmail } from '../relay-emails/entities/relay-email.entity';
+import { ForwardEvent } from '../relay-emails/entities/forward-event.entity';
 
 @Injectable()
 export class AdminService {
@@ -11,6 +12,8 @@ export class AdminService {
     private userRepository: Repository<User>,
     @InjectRepository(RelayEmail)
     private relayEmailRepository: Repository<RelayEmail>,
+    @InjectRepository(ForwardEvent)
+    private forwardEventRepository: Repository<ForwardEvent>,
   ) {}
 
   async getDashboardStats() {
@@ -43,23 +46,13 @@ export class AdminService {
       this.relayEmailRepository.count({
         where: { createdAt: MoreThanOrEqual(days7Ago) },
       }),
-      this.relayEmailRepository
-        .createQueryBuilder('re')
-        .select('COALESCE(SUM(re.forward_count), 0)', 'total')
-        .getRawOne()
-        .then((result) => Number(result.total)),
-      this.relayEmailRepository
-        .createQueryBuilder('re')
-        .select('COALESCE(SUM(re.forward_count), 0)', 'total')
-        .where('re.last_forwarded_at >= :date', { date: days28Ago })
-        .getRawOne()
-        .then((result) => Number(result.total)),
-      this.relayEmailRepository
-        .createQueryBuilder('re')
-        .select('COALESCE(SUM(re.forward_count), 0)', 'total')
-        .where('re.last_forwarded_at >= :date', { date: days7Ago })
-        .getRawOne()
-        .then((result) => Number(result.total)),
+      this.forwardEventRepository.count(),
+      this.forwardEventRepository.count({
+        where: { createdAt: MoreThanOrEqual(days28Ago) },
+      }),
+      this.forwardEventRepository.count({
+        where: { createdAt: MoreThanOrEqual(days7Ago) },
+      }),
     ]);
 
     return {
