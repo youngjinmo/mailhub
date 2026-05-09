@@ -337,10 +337,8 @@ export class RelayEmailsService {
           relayEmailAddress,
         );
         replyMaskEmail = res.replyAddress;
-      } catch (err) {
-        this.logger.error(
-          `failed to get reply mask email address when forward mail by ${err.message}`,
-        );
+      } catch (error) {
+        this.logger.error(`failed to get reply mask email address when forward mail `, error);
         replyMaskEmail = relayEmailAddress;
       }
 
@@ -421,17 +419,11 @@ export class RelayEmailsService {
       // Increment forward count (non-critical, failure is only logged)
       try {
         await this.incrementForwardCount(relayEmailAddress);
-      } catch (err) {
-        this.logger.error(
-          `Failed to increment forward count for ${this.maskEmail(relayEmailAddress)}: ${(err as Error).message}`,
-        );
+      } catch (error) {
+        this.logger.error(`Failed to increment forward count`, error);
       }
     } catch (error) {
-      const fromAddress = mail?.from?.text ?? 'unknown';
-      this.logger.error(
-        `Failed to forward email to ${this.maskEmail(primaryEmailAddress)} from ${this.maskEmail(fromAddress)}, error=${(error as Error).message}`,
-        (error as Error).stack,
-      );
+      this.logger.error(`Failed to forward email, `, error);
       throw error;
     }
   }
@@ -467,31 +459,17 @@ export class RelayEmailsService {
         attachments: attachments.length > 0 ? attachments : undefined,
       });
 
-      // Increment forward count (non-critical, failure is only logged)
       try {
         await this.incrementForwardCount(relayAddress);
-      } catch (err) {
-        this.logger.error(
-          `Failed to increment forward count for ${this.maskEmail(relayAddress)}: ${(err as Error).message}`,
-        );
+      } catch (error) {
+        this.logger.error(`Failed to increment forward count`, error);
       }
 
-      this.logger.log(
-        `Reply relayed from ${this.maskEmail(relayAddress)} to ${this.maskEmail(originalSenderAddress)}`,
-      );
+      this.logger.log(`Reply relayed successfully`);
     } catch (error) {
-      this.logger.error(
-        `Failed to relay reply to ${this.maskEmail(originalSenderAddress)} via ${this.maskEmail(relayAddress)}, error=${(error as Error).message}`,
-        (error as Error).stack,
-      );
+      this.logger.error(`Failed to relay reply`, error);
       throw error;
     }
-  }
-
-  private maskEmail(email: string): string {
-    const atIndex = email.indexOf('@');
-    if (atIndex <= 1) return '***';
-    return email[0] + '*'.repeat(Math.min(atIndex - 1, 5)) + email.substring(atIndex);
   }
 
   /**
