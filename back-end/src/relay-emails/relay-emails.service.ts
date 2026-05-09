@@ -418,16 +418,21 @@ export class RelayEmailsService {
         attachments: attachments.length > 0 ? attachments : undefined,
       });
 
-      // Increment forward count
-      await this.incrementForwardCount(relayEmailAddress);
+      // Increment forward count (non-critical, failure is only logged)
+      try {
+        await this.incrementForwardCount(relayEmailAddress);
+      } catch (err) {
+        this.logger.error(
+          `Failed to increment forward count for ${this.maskEmail(relayEmailAddress)}: ${(err as Error).message}`,
+        );
+      }
     } catch (error) {
       const fromAddress = mail?.from?.text ?? 'unknown';
       this.logger.error(
         `Failed to forward email to ${this.maskEmail(primaryEmailAddress)} from ${this.maskEmail(fromAddress)}, error=${(error as Error).message}`,
         (error as Error).stack,
       );
-
-      return;
+      throw error;
     }
   }
 
@@ -462,6 +467,15 @@ export class RelayEmailsService {
         attachments: attachments.length > 0 ? attachments : undefined,
       });
 
+      // Increment forward count (non-critical, failure is only logged)
+      try {
+        await this.incrementForwardCount(relayAddress);
+      } catch (err) {
+        this.logger.error(
+          `Failed to increment forward count for ${this.maskEmail(relayAddress)}: ${(err as Error).message}`,
+        );
+      }
+
       this.logger.log(
         `Reply relayed from ${this.maskEmail(relayAddress)} to ${this.maskEmail(originalSenderAddress)}`,
       );
@@ -470,6 +484,7 @@ export class RelayEmailsService {
         `Failed to relay reply to ${this.maskEmail(originalSenderAddress)} via ${this.maskEmail(relayAddress)}, error=${(error as Error).message}`,
         (error as Error).stack,
       );
+      throw error;
     }
   }
 
