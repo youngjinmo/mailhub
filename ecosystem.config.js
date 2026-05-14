@@ -5,7 +5,7 @@ module.exports = {
       cwd: '/var/www/private-mailhub/back-end',
       script: './dist/main.js',
       instances: 1,
-      exec_mode: 'cluster',
+      exec_mode: 'fork',
       autorestart: true,
       watch: false,
       max_memory_restart: '1G',

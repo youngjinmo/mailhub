@@ -47,7 +47,7 @@ server {
     location /api {
         limit_req zone=api_limit burst=20 nodelay;
 
-        proxy_pass http://localhost:3000;
+        proxy_pass http://localhost:8080;
         proxy_http_version 1.1;
 
         proxy_set_header Host $host;
