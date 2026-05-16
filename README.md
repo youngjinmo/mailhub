@@ -62,23 +62,27 @@ Mailhub is built on a robust, event-driven architecture powered by AWS managed s
 ```mermaid
 flowchart TD
     Sender["📧 External Sender"] -->|"relay@private-mailhub.com"| SES
-    
+
     subgraph AWS["AWS Cloud"]
         SES["SES"]
         S3["S3"]
         SQS["SQS"]
         RDS["RDS<br/>(MySQL)"]
-        
+        EventBridge["EventBridge<br/>Scheduler"]
+        PollLambda["poll-sqs Lambda"]
+
         subgraph EC2["EC2 Instance"]
             Worker["Email Worker"]
             Redis["Redis<br/>(Cache)"]
         end
-        
+
         SES -->|"Encrypt & Store"| S3
         SES -->|"Enqueue"| SQS
+        EventBridge -->|"Schedule (15s)"| PollLambda
+        PollLambda -->|"POST /internal/poll-sqs"| Worker
     end
-    
-    SQS -->|"Poll"| Worker
+
+    Worker -->|"Poll"| SQS
     S3 -->|"Decrypt"| Worker
     
     Worker -->|"1. Check Cache"| Redis
@@ -97,9 +101,11 @@ flowchart TD
 | 1 | **AWS SES** | Receives inbound email on `@private-mailhub.com` domain |
 | 2 | **Amazon S3** | Stores the raw email content with server-side encryption |
 | 3 | **Amazon SQS** | Queues the S3 object key for asynchronous processing |
-| 4 | **SQS Poller** | NestJS worker polls SQS every 30 seconds via long polling |
-| 5 | **Email Parser** | Retrieves encrypted email from S3, decrypts, and extracts metadata |
-| 6 | **Mailgun API**  | Forwards the processed email to the user's real inbox        |
+| 4 | **EventBridge Scheduler** | Fires every 15 seconds and invokes the `poll-sqs` Lambda |
+| 5 | **poll-sqs Lambda** | Thin trigger that calls the backend's internal poll endpoint over HTTPS |
+| 6 | **SQS Poller** | NestJS worker receives the trigger and drains SQS via long polling |
+| 7 | **Email Parser** | Retrieves encrypted email from S3, decrypts, and extracts metadata |
+| 8 | **Mailgun API**  | Forwards the processed email to the user's real inbox        |
 
 <br>
 
@@ -115,6 +121,8 @@ flowchart TD
 | **Email Outbound** | Mailgun |
 | **Storage** | Amazon S3 |
 | **Message Queue** | Amazon SQS |
+| **Scheduler** | Amazon EventBridge Scheduler |
+| **Serverless** | AWS Lambda (`poll-sqs` trigger) |
 | **DNS** | Amazon Route 53 |
 | **Process Manager** | PM2 |
 | **Encryption** | AES-256-GCM |
@@ -183,6 +191,7 @@ Security audits and responsible disclosure are welcome. If you discover a vulner
 # Roadmap
 
 - [ ] Reply-Relay function: fully mask email address when reply
+- [x] SQS poll trigger extracted to Lambda (`lambda/poll-sqs`)
 - [ ] Email worker switching to Lambda for cost efficiency
 - [ ] AI-powered email summarization
 - [ ] Browser extension/Mobiles apps

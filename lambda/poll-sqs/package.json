@@ -1,0 +1,17 @@
+{
+  "name": "poll-sqs-lambda",
+  "version": "1.0.0",
+  "description": "AWS Lambda that triggers the mailhub backend to poll SQS for incoming relay emails.",
+  "private": true,
+  "main": "dist/handler.js",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "package": "npm run clean && npm run build && cd dist && zip -r ../poll-sqs.zip ."
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.145",
+    "@types/node": "^20.14.0",
+    "typescript": "^5.5.0"
+  }
+}

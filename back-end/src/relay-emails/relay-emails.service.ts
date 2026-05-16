@@ -150,7 +150,7 @@ export class RelayEmailsService {
     const startTime = Date.now();
 
     try {
-      const messages = await this.sqsService.receiveMessages(10);
+      const messages = await this.sqsService.receiveMessages(50);
 
       if (messages.length === 0) {
         return;
