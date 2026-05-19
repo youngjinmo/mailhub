@@ -17,7 +17,7 @@ import { S3EventRecord, SqsService } from 'src/aws/sqs/sqs.service';
 import { SendMailService } from 'src/mail/send-mail.service';
 import { CustomEnvService } from 'src/config/custom-env.service';
 import { ProtectionUtil } from 'src/common/utils/protection.util';
-import { generateRandomRelayUsername } from 'src/common/utils/relay-email.util';
+import { generateRelayUsername } from 'src/common/utils/relay-email.util';
 import { User } from 'src/users/entities/user.entity';
 import { isProTier } from 'src/common/utils/permission.util';
 import { ReplyEmailsService } from './reply-emails.service';
@@ -54,8 +54,8 @@ export class RelayEmailsService {
     let exists = true;
 
     while (exists) {
-      const randomUsername = generateRandomRelayUsername(16);
-      relayEmail = `${randomUsername}@${this.customEnvService.get<string>('APP_DOMAIN')}`;
+      const username = generateRelayUsername();
+      relayEmail = `${username}@${this.customEnvService.get<string>('APP_DOMAIN')}`;
 
       // Check if this relay address already exists
       const existing = await this.relayEmailRepository.findOne({

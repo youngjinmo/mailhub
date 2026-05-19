@@ -18,21 +18,26 @@ export function isValidRelayUsername(username: string): boolean {
 }
 
 /**
- * Generate a random relay email username
- * Generates a random alphanumeric string that complies with RELAY_USERNAME_PATTERN
- * @param length - The length of the username (default: 16)
- * @returns A random username string
+ * Generate random relay email username
+ * Generates a 10-character alphanumeric string with a hyphen after the 4th character.
+ * e.g. xx12-xxx34
+ * @returns A random username
  */
-export function generateRandomRelayUsername(length: number = 16): string {
+export function generateRelayUsername(): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  const bytes = randomBytes(length);
+  const bytes = randomBytes(9);
 
-  let result = '';
-  for (let i = 0; i < length; i++) {
-    result += chars[bytes[i] % chars.length];
+  let pre = '';
+  let post = '';
+
+  for (let i = 0; i < 4; i++) {
+    pre += chars[bytes[i] % chars.length];
+  }
+  for (let i = 4; i < 9; i++) {
+    post += chars[bytes[i] % chars.length];
   }
 
-  return result;
+  return `${pre}-${post}`;
 }
 
 /**
