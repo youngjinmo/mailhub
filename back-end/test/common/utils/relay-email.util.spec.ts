@@ -20,6 +20,13 @@ describe('relay-email.util', () => {
         }
       });
 
+      it('When called, Then the first character is always a lowercase English letter', () => {
+        for (let i = 0; i < 100; i++) {
+          const username = generateRelayUsername();
+          expect(username[0]).toMatch(/^[a-z]$/);
+        }
+      });
+
       it('When called many times, Then the produced characters include both lowercase letters and digits', () => {
         let combined = '';
         for (let i = 0; i < 100; i++) {
