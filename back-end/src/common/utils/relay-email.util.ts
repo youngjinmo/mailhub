@@ -24,15 +24,20 @@ export function isValidRelayUsername(username: string): boolean {
  * @returns A random username
  */
 export function generateRelayUsername(): string {
-  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  const letters = 'abcdefghijklmnopqrstuvwxyz';
+  const numbers = '0123456789';
+  const chars = letters.concat(numbers);
   const bytes = randomBytes(9);
 
-  let pre = '';
+  // First character should be a letter
+  let pre = letters[bytes[0] % letters.length];
   let post = '';
 
-  for (let i = 0; i < 4; i++) {
+  for (let i = 1; i < 4; i++) {
     pre += chars[bytes[i] % chars.length];
   }
+
+  // Add hyphen after the 4th character
   for (let i = 4; i < 9; i++) {
     post += chars[bytes[i] % chars.length];
   }
