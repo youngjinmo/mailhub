@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Plus, Search } from 'lucide-react';
 import RelayEmailCard from './RelayEmailCard';
 import Header from './Header';
 import Footer from './Footer';
@@ -32,6 +33,7 @@ const ITEMS_PER_PAGE = 5;
 const RelayEmailDashboard = ({ userEmail }: RelayEmailDashboardProps) => {
   const [isCreating, setIsCreating] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
   const queryClient = useQueryClient();
 
   // Fetch relay emails
@@ -110,10 +112,33 @@ const RelayEmailDashboard = ({ userEmail }: RelayEmailDashboardProps) => {
           {isCreating ? 'Creating...' : 'Create New Private Email'}
         </Button>
 
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Search by email or description"
+            className="pl-9 bg-card"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
+          />
+        </div>
+
         {(() => {
-          const totalPages = Math.ceil(relayEmails.length / ITEMS_PER_PAGE);
+          const normalizedQuery = searchQuery.trim().toLowerCase();
+          const filteredEmails = normalizedQuery
+            ? relayEmails.filter(
+                (e) =>
+                  e.relayEmail.toLowerCase().includes(normalizedQuery) ||
+                  (e.description ?? '').toLowerCase().includes(normalizedQuery),
+              )
+            : relayEmails;
+
+          const totalPages = Math.ceil(filteredEmails.length / ITEMS_PER_PAGE);
           const safePage = Math.min(currentPage, totalPages || 1);
-          const paginatedEmails = relayEmails.slice(
+          const paginatedEmails = filteredEmails.slice(
             (safePage - 1) * ITEMS_PER_PAGE,
             safePage * ITEMS_PER_PAGE,
           );
@@ -151,6 +176,14 @@ const RelayEmailDashboard = ({ userEmail }: RelayEmailDashboardProps) => {
             );
           }
 
+          if (filteredEmails.length === 0) {
+            return (
+              <div className="text-center py-12 text-muted-foreground">
+                <p>No private emails match your search.</p>
+              </div>
+            );
+          }
+
           return (
             <>
               <div className="space-y-3">
@@ -168,7 +201,7 @@ const RelayEmailDashboard = ({ userEmail }: RelayEmailDashboardProps) => {
                 ))}
               </div>
 
-              {relayEmails.length > 0 && (
+              {totalPages > 1 && (
                 <Pagination>
                   <PaginationContent>
                     <PaginationItem>
