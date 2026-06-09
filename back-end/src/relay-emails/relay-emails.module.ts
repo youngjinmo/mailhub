@@ -12,6 +12,7 @@ import { ProtectionUtil } from '../common/utils/protection.util';
 import { ConfigModule } from 'src/config/config.module';
 import { MailModule } from 'src/mail/mail.module';
 import { ReplyEmailsService } from './reply-emails.service';
+import { LogsModule } from '../logs/logs.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { ReplyEmailsService } from './reply-emails.service';
     AwsModule,
     MailModule,
     ConfigModule,
+    LogsModule,
   ],
   controllers: [RelayEmailsController],
   providers: [RelayEmailsService, ReplyEmailsService, QueuePollerService, ProtectionUtil],
