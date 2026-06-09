@@ -21,6 +21,7 @@ import { generateRelayUsername } from 'src/common/utils/relay-email.util';
 import { User } from 'src/users/entities/user.entity';
 import { isProTier } from 'src/common/utils/permission.util';
 import { ReplyEmailsService } from './reply-emails.service';
+import { EmailForwardingLogService } from '../logs/email-forwarding-log.service';
 
 @Injectable()
 export class RelayEmailsService {
@@ -37,6 +38,7 @@ export class RelayEmailsService {
     private readonly sendMailService: SendMailService,
     private readonly cacheService: CacheService,
     private readonly encryptionUtil: ProtectionUtil,
+    private readonly emailForwardingLogService: EmailForwardingLogService,
   ) {}
 
   async generateRelayEmailAddress(user: User): Promise<RelayEmail> {
@@ -297,7 +299,7 @@ export class RelayEmailsService {
 
       // Forward email to primary address
       const forwardStartTime = Date.now();
-      await this.forwardEmail(primaryEmail, relayEmail, parsedMail);
+      await this.forwardEmail(primaryEmail, relayEmail, parsedMail, relayEmailEntity);
 
       // Measure performance
       const forwardElapsed = Date.now() - forwardStartTime;
@@ -320,6 +322,7 @@ export class RelayEmailsService {
     primaryEmailAddress: string,
     relayEmailAddress: string,
     mail: ParsedMail,
+    relayEmailEntity: RelayEmail,
   ) {
     try {
       // Parse info from mail
@@ -422,6 +425,13 @@ export class RelayEmailsService {
       } catch (error) {
         this.logger.error(`Failed to increment forward count`, error);
       }
+
+      // Record the forwarding log (non-critical; the sender address is stored as a hash)
+      await this.emailForwardingLogService.record(
+        relayEmailEntity.userId,
+        relayEmailEntity.id,
+        this.encryptionUtil.hash(originalSenderAddress),
+      );
     } catch (error) {
       this.logger.error(`Failed to forward email, `, error);
       throw error;

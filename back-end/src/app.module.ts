@@ -10,9 +10,12 @@ import { UsersModule } from './users/users.module';
 import { RelayEmailsModule } from './relay-emails/relay-emails.module';
 import { AwsModule } from './aws/aws.module';
 import { AdminModule } from './admin/admin.module';
+import { LogsModule } from './logs/logs.module';
 import { User } from './users/entities/user.entity';
 import { RelayEmail } from './relay-emails/entities/relay-email.entity';
 import { ReplyMasking } from './relay-emails/entities/reply-masking.entity';
+import { UserActivityLog } from './logs/entities/user-activity-log.entity';
+import { EmailForwardingLog } from './logs/entities/email-forwarding-log.entity';
 import { AuthGuard } from './common/guards/auth.guard';
 
 @Module({
@@ -28,7 +31,7 @@ import { AuthGuard } from './common/guards/auth.guard';
       database: process.env.DATABASE_NAME,
       username: process.env.DATABASE_USERNAME,
       password: process.env.DATABASE_PASSWORD,
-      entities: [User, RelayEmail, ReplyMasking],
+      entities: [User, RelayEmail, ReplyMasking, UserActivityLog, EmailForwardingLog],
       synchronize: false,
       logging: process.env.NODE_ENV === 'production',
     }),
@@ -39,6 +42,7 @@ import { AuthGuard } from './common/guards/auth.guard';
     RelayEmailsModule,
     AwsModule,
     AdminModule,
+    LogsModule,
   ],
   controllers: [],
   providers: [
