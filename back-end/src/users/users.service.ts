@@ -15,6 +15,8 @@ import { ProtectionUtil } from 'src/common/utils/protection.util';
 import { UserStatus } from './user.enums';
 import { CacheService } from '../cache/cache.service';
 import { SendMailService } from '../mail/send-mail.service';
+import { UserActivityLogService } from '../logs/user-activity-log.service';
+import { UserActivityType } from '../common/enums/activity-type.enum';
 
 @Injectable()
 export class UsersService {
@@ -26,6 +28,7 @@ export class UsersService {
     private proectionUtil: ProtectionUtil,
     private cacheService: CacheService,
     private sendMailService: SendMailService,
+    private userActivityLogService: UserActivityLogService,
   ) {}
 
   async findById(id: bigint): Promise<User | null> {
@@ -79,19 +82,32 @@ export class UsersService {
   }
 
   async deactivateUser(userId: bigint): Promise<void> {
-    await this.userRepository
-      .update(
+    try {
+      const result = await this.userRepository.update(
         { id: userId },
         {
           status: UserStatus.DEACTIVATED,
         },
-      )
-      .then(() => {
-        this.logger.log('success to deactivated');
-      })
-      .catch((err) => {
-        this.logger.error(err, `failed to deactivate user, userId=${userId}`);
-      });
+      );
+
+      // The MySQL driver reports affected=0 when the row already had the target
+      // value, so a zero count does not necessarily mean the user is missing.
+      // Confirm existence before treating it as a not-found error (idempotency).
+      if (!result.affected) {
+        const exists = await this.findById(userId);
+        if (!exists) {
+          throw new NotFoundException('User not found');
+        }
+      }
+
+      this.logger.log(`success to deactivate user, userId=${userId}`);
+    } catch (err) {
+      if (err instanceof NotFoundException) throw err;
+      this.logger.error(err, `failed to deactivate user, userId=${userId}`);
+      throw new InternalServerErrorException('Failed to deactivate user');
+    }
+
+    await this.userActivityLogService.record(userId, UserActivityType.ACCOUNT_DEACTIVATION);
   }
 
   async deleteUser(userId: bigint): Promise<void> {
@@ -192,6 +208,7 @@ export class UsersService {
     provider: OAuthProvider,
     oauthId: string,
     encryptedToken?: string,
+    options: { recordActivity?: boolean } = {},
   ): Promise<void> {
     const field = UsersService.OAUTH_FIELD_MAP[provider];
     const tokenField = UsersService.OAUTH_TOKEN_FIELD_MAP[provider];
@@ -202,6 +219,10 @@ export class UsersService {
         ...(tokenField && encryptedToken ? { [tokenField]: encryptedToken } : {}),
       },
     );
+
+    if (options.recordActivity ?? true) {
+      await this.userActivityLogService.record(userId, UserActivityType.OAUTH_LINK, provider);
+    }
   }
 
   async unlinkOAuth(userId: bigint, provider: OAuthProvider): Promise<void> {
@@ -214,6 +235,8 @@ export class UsersService {
         ...(tokenField ? { [tokenField]: null } : {}),
       },
     );
+
+    await this.userActivityLogService.record(userId, UserActivityType.OAUTH_UNLINK, provider);
   }
 
   async getOAuthToken(userId: bigint, provider: OAuthProvider): Promise<string | null> {
@@ -292,5 +315,7 @@ export class UsersService {
 
     // Clear cache
     await this.cacheService.deleteUsernameChangeData(userId);
+
+    await this.userActivityLogService.record(userId, UserActivityType.USERNAME_CHANGE);
   }
 }

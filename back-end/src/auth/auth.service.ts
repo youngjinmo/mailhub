@@ -16,6 +16,8 @@ import { LoginDto } from './dto/login.dto';
 import { TokenPayloadDto } from './dto/token-response.dto';
 import { ProtectionUtil } from 'src/common/utils/protection.util';
 import { AuthResponseDto } from './dto/auth-response.dto';
+import { UserActivityLogService } from '../logs/user-activity-log.service';
+import { UserActivityType } from '../common/enums/activity-type.enum';
 
 @Injectable()
 export class AuthService {
@@ -28,6 +30,7 @@ export class AuthService {
     private readonly sendMailService: SendMailService,
     private readonly customEnvService: CustomEnvService,
     private readonly protectionUtil: ProtectionUtil,
+    private readonly userActivityLogService: UserActivityLogService,
   ) {}
 
   async sendVerificationCode(encryptedUsername: string): Promise<{ isNewUser: boolean }> {
@@ -103,11 +106,14 @@ export class AuthService {
       user = await this.usersService.createEmailUser(encryptedUsername);
       // Send welcome email
       await this.sendMailService.sendWelcomeEmail(this.protectionUtil.decrypt(encryptedUsername));
+      await this.userActivityLogService.record(user.id, UserActivityType.SIGNUP);
     }
     // update last_logined_at
     await this.usersService.updateUser(usernameHash, {
       lastLoginedAt: new Date(),
     });
+
+    await this.userActivityLogService.record(user.id, UserActivityType.LOGIN);
 
     // Generate tokens
     const { accessToken, refreshToken } = this.tokenService.generateTokens(user.id, user.username);
@@ -178,5 +184,15 @@ export class AuthService {
 
   async logout(refreshToken: string): Promise<void> {
     await this.cacheService.delSession(refreshToken);
+
+    // Best-effort: resolve the user from the token to record the logout activity.
+    // An invalid/expired token simply skips logging and never fails logout.
+    try {
+      const { userId } = this.tokenService.parsePayloadFromToken(refreshToken);
+      await this.userActivityLogService.record(userId, UserActivityType.LOGOUT);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.debug(`Skipping logout activity log: ${message}`);
+    }
   }
 }

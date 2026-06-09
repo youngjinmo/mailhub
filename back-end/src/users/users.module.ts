@@ -7,9 +7,10 @@ import { ProtectionUtil } from 'src/common/utils/protection.util';
 import { CacheModule } from '../cache/cache.module';
 import { AwsModule } from '../aws/aws.module';
 import { MailModule } from 'src/mail/mail.module';
+import { LogsModule } from '../logs/logs.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User]), CacheModule, AwsModule, MailModule],
+  imports: [TypeOrmModule.forFeature([User]), CacheModule, AwsModule, MailModule, LogsModule],
   controllers: [UsersController],
   providers: [UsersService, ProtectionUtil],
   exports: [UsersService],
