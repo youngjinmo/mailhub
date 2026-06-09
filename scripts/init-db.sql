@@ -53,5 +53,26 @@ CREATE TABLE IF NOT EXISTS reply_maskings (
   INDEX idx_sender_receiver_hash (sender_address_hash, receiver_address_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Verify tables
-SHOW TABLES;
+-- User Activity Logs table
+CREATE TABLE IF NOT EXISTS user_activity_logs (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  user_id BIGINT NOT NULL,
+  activity_type VARCHAR(255) NOT NULL,
+  activity_details TEXT NULL,
+  created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) NOT NULL,
+  INDEX idx_user_id (user_id),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Email Forwarding Logs table
+CREATE TABLE IF NOT EXISTS email_forwarding_logs (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  user_id BIGINT NOT NULL,
+  relay_email_id BIGINT NOT NULL,
+  original_sender_hash VARCHAR(255) NOT NULL,
+  created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) NOT NULL,
+  INDEX idx_relay_email_id (relay_email_id),
+  INDEX idx_user_id (user_id),
+  FOREIGN KEY (relay_email_id) REFERENCES relay_emails(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
