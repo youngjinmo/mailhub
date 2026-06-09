@@ -49,6 +49,8 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 logs/
+# Application source module, not a runtime log directory
+!back-end/src/logs/
 
 # Temporary files
 *.tmp
