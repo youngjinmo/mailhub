@@ -35,7 +35,9 @@
       "Bash(gh workflow list:*)",
       "Bash(gh run list:*)",
       "Bash(gh run view:*)",
-      "Bash(gh secret:*)"
+      "Bash(gh secret:*)",
+      "Skill(code-review)",
+      "Bash(yarn build *)"
     ]
   }
 }
