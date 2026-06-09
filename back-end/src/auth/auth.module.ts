@@ -8,6 +8,7 @@ import { CacheModule } from '../cache/cache.module';
 import { UsersModule } from '../users/users.module';
 import { AwsModule } from '../aws/aws.module';
 import { MailModule } from 'src/mail/mail.module';
+import { LogsModule } from '../logs/logs.module';
 import { CustomEnvService } from '../config/custom-env.service';
 import { ProtectionUtil } from 'src/common/utils/protection.util';
 import { ACCESS_TOKEN_TTL } from 'src/common/utils/policy';
@@ -31,6 +32,7 @@ import { ACCESS_TOKEN_TTL } from 'src/common/utils/policy';
     UsersModule,
     AwsModule,
     MailModule,
+    LogsModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, OAuthService, TokenService, ProtectionUtil],

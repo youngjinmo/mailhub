@@ -7,6 +7,8 @@ import { CustomEnvService } from '../config/custom-env.service';
 import { ProtectionUtil } from 'src/common/utils/protection.util';
 import { OAuthProvider } from 'src/common/enums/oauth-provider.enum';
 import { AuthResponseDto } from './dto/auth-response.dto';
+import { UserActivityLogService } from '../logs/user-activity-log.service';
+import { UserActivityType } from '../common/enums/activity-type.enum';
 
 interface AppleJWK {
   kty: string;
@@ -27,6 +29,7 @@ export class OAuthService {
     private readonly usersService: UsersService,
     private readonly customEnvService: CustomEnvService,
     private readonly protectionUtil: ProtectionUtil,
+    private readonly userActivityLogService: UserActivityLogService,
   ) {}
 
   getGithubAuthUrl(redirectUri: string): { url: string } {
@@ -196,11 +199,14 @@ export class OAuthService {
   ): Promise<AuthResponseDto> {
     // 1. Find user by OAuth ID
     let user = await this.usersService.findByOAuthId(provider, oauthId);
+    let isNewUser = false;
 
     if (user) {
       // Update stored token on re-login
       if (encryptedToken) {
-        await this.usersService.linkOAuth(user.id, provider, oauthId, encryptedToken);
+        await this.usersService.linkOAuth(user.id, provider, oauthId, encryptedToken, {
+          recordActivity: false,
+        });
       }
     } else {
       // 2. Find user by email hash
@@ -219,6 +225,7 @@ export class OAuthService {
           oauthId,
           encryptedToken,
         );
+        isNewUser = true;
       }
     }
 
@@ -226,6 +233,11 @@ export class OAuthService {
     await this.usersService.updateUser(user.usernameHash, {
       lastLoginedAt: new Date(),
     });
+
+    if (isNewUser) {
+      await this.userActivityLogService.record(user.id, UserActivityType.SIGNUP, provider);
+    }
+    await this.userActivityLogService.record(user.id, UserActivityType.LOGIN, provider);
 
     // Generate tokens
     const { accessToken, refreshToken } = this.tokenService.generateTokens(user.id, user.username);
