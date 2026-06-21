@@ -13,7 +13,13 @@ export function createHandler(processor: RecordProcessor) {
       event.Records.map(async (message) => {
         try {
           const records = parseS3Event(message.body);
-          await Promise.all(records.map((record) => processor.process(record)));
+          const results = await Promise.allSettled(records.map((record) => processor.process(record)));
+
+          const rejected = results.find((result) => result.status === 'rejected');
+          if (rejected) {
+            throw rejected.reason;
+          }
+
           console.info('SQS message processed', { messageId: message.messageId });
         } catch (error) {
           console.error('SQS message processing failed', { messageId: message.messageId, error });
