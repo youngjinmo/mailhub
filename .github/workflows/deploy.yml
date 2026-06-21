@@ -20,10 +20,30 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: us-east-1
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            back-end/package-lock.json
+            front-end/package-lock.json
+            lambda/poll-sqs/package-lock.json
+
       - name: Get Github Action Runner IP
         id: github-action-runner-ip
         run: |
           echo "ip=$(curl -s https://checkip.amazonaws.com)" >> $GITHUB_OUTPUT
+
+      - name: Setup SAM CLI
+        uses: aws-actions/setup-sam@v2
+
+      - name: Build Lambda
+        working-directory: lambda/poll-sqs
+        run: |
+          npm ci
+          npm test
+          sam build
 
       - name: Add Github Action Runner IP to AWS Security Group
         run: |
@@ -54,11 +74,67 @@ jobs:
             # Build back-end
             cd ../back-end
             sudo npm ci
+            sudo npm run migration:run
             sudo npm run build
 
-            # Reload PM2 processes
+            # Keep the polling worker alive until the Lambda deployment succeeds
             cd ..
-            pm2 reload all
+            pm2 startOrReload ecosystem.config.js
+
+      - name: Deploy Lambda
+        working-directory: lambda/poll-sqs
+        env:
+          EMAIL_S3_BUCKET: ${{ secrets.AWS_EMAIL_S3_BUCKET }}
+          EMAIL_SQS_QUEUE_ARN: ${{ secrets.AWS_EMAIL_SQS_QUEUE_ARN }}
+          EMAIL_SQS_QUEUE_URL: ${{ secrets.AWS_EMAIL_SQS_QUEUE_URL }}
+          LAMBDA_SUBNET_IDS: ${{ secrets.AWS_LAMBDA_SUBNET_IDS }}
+          LAMBDA_SECURITY_GROUP_IDS: ${{ secrets.AWS_LAMBDA_SECURITY_GROUP_IDS }}
+          APP_DOMAIN: ${{ secrets.APP_DOMAIN }}
+          DATABASE_HOST: ${{ secrets.DATABASE_HOST }}
+          DATABASE_PORT: ${{ secrets.DATABASE_PORT }}
+          DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
+          DATABASE_USERNAME: ${{ secrets.DATABASE_USERNAME }}
+          DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+          MAILGUN_API_KEY: ${{ secrets.MAILGUN_API_KEY }}
+          MAILGUN_BASE_URL: ${{ secrets.MAILGUN_BASE_URL }}
+        run: |
+          aws sqs set-queue-attributes \
+            --queue-url "$EMAIL_SQS_QUEUE_URL" \
+            --attributes VisibilityTimeout=1860
+
+          sam deploy \
+            --stack-name mailhub-email-forwarder \
+            --resolve-s3 \
+            --capabilities CAPABILITY_IAM \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides \
+              Environment=production \
+              ExistingEmailBucketName="$EMAIL_S3_BUCKET" \
+              ExistingEmailQueueArn="$EMAIL_SQS_QUEUE_ARN" \
+              LambdaSubnetIds="$LAMBDA_SUBNET_IDS" \
+              LambdaSecurityGroupIds="$LAMBDA_SECURITY_GROUP_IDS" \
+              AppName=Mailhub \
+              AppDomain="$APP_DOMAIN" \
+              DatabaseHost="$DATABASE_HOST" \
+              DatabasePort="$DATABASE_PORT" \
+              DatabaseName="$DATABASE_NAME" \
+              DatabaseUsername="$DATABASE_USERNAME" \
+              DatabasePassword="$DATABASE_PASSWORD" \
+              EncryptionKey="$ENCRYPTION_KEY" \
+              MailgunApiKey="$MAILGUN_API_KEY" \
+              MailgunBaseUrl="$MAILGUN_BASE_URL"
+
+      - name: Stop retired polling worker
+        if: vars.RETIRE_POLLING_WORKER == 'true'
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          key: ${{ secrets.EC2_SSH_KEY }}
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          port: ${{ secrets.EC2_PORT }}
+          script: pm2 delete mailhub-worker || true
 
       - name: Revoke IP from AWS Security  Group
         if: always()
@@ -68,4 +144,3 @@ jobs:
             --protocol tcp \
             --port 22 \
             --cidr ${{ steps.github-action-runner-ip.outputs.ip }}/32
-

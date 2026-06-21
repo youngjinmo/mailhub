@@ -57,7 +57,7 @@ Mailhub acts as an intermediary between external senders and your real inbox. He
 
 # Architecture
 
-Mailhub is built on a robust, event-driven architecture powered by AWS managed services and a NestJS backend.
+Mailhub is built on an event-driven architecture powered by AWS managed services, Lambda, and a NestJS API backend.
 
 ```mermaid
 flowchart TD
@@ -69,24 +69,18 @@ flowchart TD
         SQS["SQS"]
         RDS["RDS<br/>(MySQL)"]
         
-        subgraph EC2["EC2 Instance"]
-            Worker["Email Worker"]
-            Redis["Redis<br/>(Cache)"]
-        end
+        Lambda["Email Forwarding Lambda"]
+        EC2["EC2<br/>NestJS API + Redis"]
         
         SES -->|"Encrypt & Store"| S3
-        SES -->|"Enqueue"| SQS
+        SES -->|"Notify"| SNS["SNS"]
+        SNS -->|"Enqueue"| SQS
+        SQS -->|"Event source mapping"| Lambda
     end
-    
-    SQS -->|"Poll"| Worker
-    S3 -->|"Decrypt"| Worker
-    
-    Worker -->|"1. Check Cache"| Redis
-    Redis -.->|"Cache Miss"| RDS
-    RDS -.->|"Store in Cache"| Redis
-    Redis -->|"relay@private-mailhub.com → real@email.com"| Worker
-    
-    Worker -->|"Forward"| Mailgun["Mailgun"]
+
+    S3 -->|"GetObject (SSE decrypt)"| Lambda
+    Lambda -->|"Look up encrypted address"| RDS
+    Lambda -->|"Forward"| Mailgun["Mailgun / SES"]
     Mailgun --> Inbox["📬 User's Inbox"]
 ```
 
@@ -97,9 +91,9 @@ flowchart TD
 | 1 | **AWS SES** | Receives inbound email on `@private-mailhub.com` domain |
 | 2 | **Amazon S3** | Stores the raw email content with server-side encryption |
 | 3 | **Amazon SQS** | Queues the S3 object key for asynchronous processing |
-| 4 | **SQS Poller** | NestJS worker polls SQS every 30 seconds via long polling |
-| 5 | **Email Parser** | Retrieves encrypted email from S3, decrypts, and extracts metadata |
-| 6 | **Mailgun API**  | Forwards the processed email to the user's real inbox        |
+| 4 | **AWS Lambda** | SQS event source mapping invokes the forwarding function |
+| 5 | **Email Parser** | Retrieves the SSE-protected email from S3 and extracts metadata |
+| 6 | **RDS + Mailgun/SES** | Resolves the encrypted destination and forwards the email |
 
 <br>
 
@@ -125,7 +119,7 @@ flowchart TD
 
 ### Prerequisites
 
-- Node.js >= 18.0.0
+- Node.js >= 20.19.0
 - MySQL 8.x
 - Redis 7.x
 - AWS Account (SES, S3, SQS, RDS, Route 53)
@@ -183,7 +177,7 @@ Security audits and responsible disclosure are welcome. If you discover a vulner
 # Roadmap
 
 - [ ] Reply-Relay function: fully mask email address when reply
-- [ ] Email worker switching to Lambda for cost efficiency
+- [x] Email worker switching to Lambda for cost efficiency
 - [ ] AI-powered email summarization
 - [ ] Browser extension/Mobiles apps
 
@@ -196,4 +190,3 @@ This project is licensed under the **GNU Affero General Public License v3.0 (AGP
 This means you are free to view, modify, and distribute the source code, but any modified version that is made available as a network service must also be open-sourced under the same license. This ensures that Mailhub — and any derivative works — remain transparent and open for the community to audit.
 
 See the [LICENSE](LICENSE) file for the full license text.
-

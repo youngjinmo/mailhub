@@ -1,0 +1,109 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Mailhub inbound email forwarding Lambda
+
+Parameters:
+  Environment:
+    Type: String
+    Default: production
+  ExistingEmailBucketName:
+    Type: String
+  ExistingEmailQueueArn:
+    Type: String
+  LambdaSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+  LambdaSecurityGroupIds:
+    Type: List<AWS::EC2::SecurityGroup::Id>
+  ReservedConcurrency:
+    Type: Number
+    Default: 2
+    MinValue: 2
+  AppName:
+    Type: String
+    Default: Mailhub
+  AppDomain:
+    Type: String
+  DatabaseHost:
+    Type: String
+  DatabasePort:
+    Type: Number
+    Default: 3306
+  DatabaseName:
+    Type: String
+  DatabaseUsername:
+    Type: String
+  DatabasePassword:
+    Type: String
+    NoEcho: true
+  EncryptionKey:
+    Type: String
+    NoEcho: true
+  MailgunApiKey:
+    Type: String
+    Default: ''
+    NoEcho: true
+  MailgunBaseUrl:
+    Type: String
+    Default: https://api.mailgun.net
+
+Resources:
+  PollSqsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Runtime: nodejs22.x
+      Handler: index.handler
+      Architectures:
+        - arm64
+      Timeout: 300
+      MemorySize: 1024
+      ReservedConcurrentExecutions: !Ref ReservedConcurrency
+      VpcConfig:
+        SubnetIds: !Ref LambdaSubnetIds
+        SecurityGroupIds: !Ref LambdaSecurityGroupIds
+      Environment:
+        Variables:
+          NODE_ENV: !Ref Environment
+          APP_NAME: !Ref AppName
+          APP_DOMAIN: !Ref AppDomain
+          DATABASE_HOST: !Ref DatabaseHost
+          DATABASE_PORT: !Ref DatabasePort
+          DATABASE_NAME: !Ref DatabaseName
+          DATABASE_USERNAME: !Ref DatabaseUsername
+          DATABASE_PASSWORD: !Ref DatabasePassword
+          ENCRYPTION_KEY: !Ref EncryptionKey
+          MAILGUN_API_KEY: !Ref MailgunApiKey
+          MAILGUN_BASE_URL: !Ref MailgunBaseUrl
+      Policies:
+        - AWSLambdaVPCAccessExecutionRole
+        - S3ReadPolicy:
+            BucketName: !Ref ExistingEmailBucketName
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ses:SendEmail
+                - ses:SendRawEmail
+              Resource: '*'
+      Events:
+        EmailQueue:
+          Type: SQS
+          Properties:
+            Queue: !Ref ExistingEmailQueueArn
+            BatchSize: 10
+            MaximumBatchingWindowInSeconds: 5
+            ScalingConfig:
+              MaximumConcurrency: !Ref ReservedConcurrency
+            FunctionResponseTypes:
+              - ReportBatchItemFailures
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+          - src/index.ts
+        Minify: true
+        Sourcemap: true
+        Target: es2022
+
+Outputs:
+  PollSqsFunctionArn:
+    Value: !GetAtt PollSqsFunction.Arn
