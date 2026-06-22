@@ -53,5 +53,18 @@ CREATE TABLE IF NOT EXISTS reply_maskings (
   INDEX idx_sender_receiver_hash (sender_address_hash, receiver_address_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Lambda email forwarding idempotency table
+CREATE TABLE IF NOT EXISTS email_forwarding_attempts (
+  idempotency_key CHAR(64) PRIMARY KEY,
+  bucket_name VARCHAR(255) NOT NULL,
+  object_key VARCHAR(1024) NOT NULL,
+  status VARCHAR(16) NOT NULL,
+  processing_token CHAR(36) NOT NULL,
+  lease_expires_at DATETIME(6) NULL,
+  attempts INT UNSIGNED DEFAULT 1 NOT NULL,
+  created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) NOT NULL,
+  completed_at DATETIME(6) NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Verify tables
 SHOW TABLES;

@@ -65,16 +65,6 @@ class EnvironmentVariables {
   AWS_REGION: string;
 
   @IsString()
-  AWS_S3_EMAIL_BUCKET: string;
-
-  @IsString()
-  AWS_SQS_QUEUE_NAME: string;
-
-  @IsString()
-  @IsOptional()
-  AWS_SQS_QUEUE_URL?: string;
-
-  @IsString()
   NO_REPLY_ADDRESS: string;
 
   @IsString()
