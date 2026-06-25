@@ -7,7 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Not, Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { SubscriptionTier } from '../common/enums/subscription-tier.enum';
 import { OAuthProvider } from '../common/enums/oauth-provider.enum';
@@ -82,9 +82,11 @@ export class UsersService {
   }
 
   async deactivateUser(userId: bigint): Promise<void> {
+    let wasDeactivated = false;
+
     try {
       const result = await this.userRepository.update(
-        { id: userId },
+        { id: userId, status: Not(UserStatus.DEACTIVATED) },
         {
           status: UserStatus.DEACTIVATED,
         },
@@ -98,6 +100,8 @@ export class UsersService {
         if (!exists) {
           throw new NotFoundException('User not found');
         }
+      } else {
+        wasDeactivated = true;
       }
 
       this.logger.log(`success to deactivate user, userId=${userId}`);
@@ -107,7 +111,9 @@ export class UsersService {
       throw new InternalServerErrorException('Failed to deactivate user');
     }
 
-    await this.userActivityLogService.record(userId, UserActivityType.ACCOUNT_DEACTIVATION);
+    if (wasDeactivated) {
+      await this.userActivityLogService.record(userId, UserActivityType.ACCOUNT_DEACTIVATION);
+    }
   }
 
   async deleteUser(userId: bigint): Promise<void> {

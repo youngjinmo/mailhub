@@ -103,6 +103,15 @@ export class ProtectionUtil {
   }
 
   /**
+   * Hash email address by SHA-256 after applying email-specific normalization.
+   * @param emailAddress - email address to hash
+   * @returns Hashed normalized email address by SHA-256
+   */
+  hashEmailAddress(emailAddress: string): string {
+    return this.hash(emailAddress.trim().toLowerCase());
+  }
+
+  /**
    * Generate a new random encryption key
    * @returns Base64 encoded 32-byte key
    */
