@@ -430,7 +430,7 @@ export class RelayEmailsService {
       await this.emailForwardingLogService.record(
         relayEmailEntity.userId,
         relayEmailEntity.id,
-        this.encryptionUtil.hash(originalSenderAddress),
+        this.encryptionUtil.hashEmailAddress(originalSenderAddress),
       );
     } catch (error) {
       this.logger.error(`Failed to forward email, `, error);

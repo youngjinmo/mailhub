@@ -180,6 +180,27 @@ describe('ProtectionUtil', () => {
   });
 
   // ─────────────────────────────────────────────
+  // hashEmailAddress
+  // ─────────────────────────────────────────────
+  describe('hashEmailAddress', () => {
+    describe('Given email addresses with different case and surrounding whitespace', () => {
+      it('When hashEmailAddress is called, Then returns the same hash for the normalized address', () => {
+        // Given
+        const normalizedEmail = 'sender@example.com';
+        const emailWithCaseAndWhitespace = '  Sender@Example.COM  ';
+        const expectedHash = crypto.createHash('sha256').update(normalizedEmail).digest('hex');
+
+        // When
+        const result = protectionUtil.hashEmailAddress(emailWithCaseAndWhitespace);
+
+        // Then
+        expect(result).toBe(expectedHash);
+        expect(result).toBe(protectionUtil.hashEmailAddress(normalizedEmail));
+      });
+    });
+  });
+
+  // ─────────────────────────────────────────────
   // generateKey
   // ─────────────────────────────────────────────
   describe('generateKey', () => {
