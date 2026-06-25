@@ -14,7 +14,9 @@ export class AddLogTables1770900000000 implements MigrationInterface {
         PRIMARY KEY (\`id\`)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
-    await queryRunner.query(`CREATE INDEX \`idx_user_id\` ON \`user_activity_logs\` (\`user_id\`)`);
+    await queryRunner.query(
+      `CREATE INDEX \`idx_user_id_created_at\` ON \`user_activity_logs\` (\`user_id\`, \`created_at\` DESC)`,
+    );
     await queryRunner.query(`
       ALTER TABLE \`user_activity_logs\`
       ADD CONSTRAINT \`FK_user_activity_logs_user_id\`
@@ -32,10 +34,10 @@ export class AddLogTables1770900000000 implements MigrationInterface {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
     await queryRunner.query(
-      `CREATE INDEX \`idx_user_id\` ON \`email_forwarding_logs\` (\`user_id\`)`,
+      `CREATE INDEX \`idx_user_id_created_at\` ON \`email_forwarding_logs\` (\`user_id\`, \`created_at\` DESC)`,
     );
     await queryRunner.query(
-      `CREATE INDEX \`idx_relay_email_id\` ON \`email_forwarding_logs\` (\`relay_email_id\`)`,
+      `CREATE INDEX \`idx_relay_email_id_created_at\` ON \`email_forwarding_logs\` (\`relay_email_id\`, \`created_at\` DESC)`,
     );
     await queryRunner.query(`
       ALTER TABLE \`email_forwarding_logs\`
@@ -56,14 +58,16 @@ export class AddLogTables1770900000000 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE \`email_forwarding_logs\` DROP FOREIGN KEY \`FK_email_forwarding_logs_user_id\``,
     );
-    await queryRunner.query(`DROP INDEX \`idx_relay_email_id\` ON \`email_forwarding_logs\``);
-    await queryRunner.query(`DROP INDEX \`idx_user_id\` ON \`email_forwarding_logs\``);
+    await queryRunner.query(
+      `DROP INDEX \`idx_relay_email_id_created_at\` ON \`email_forwarding_logs\``,
+    );
+    await queryRunner.query(`DROP INDEX \`idx_user_id_created_at\` ON \`email_forwarding_logs\``);
     await queryRunner.query(`DROP TABLE \`email_forwarding_logs\``);
 
     await queryRunner.query(
       `ALTER TABLE \`user_activity_logs\` DROP FOREIGN KEY \`FK_user_activity_logs_user_id\``,
     );
-    await queryRunner.query(`DROP INDEX \`idx_user_id\` ON \`user_activity_logs\``);
+    await queryRunner.query(`DROP INDEX \`idx_user_id_created_at\` ON \`user_activity_logs\``);
     await queryRunner.query(`DROP TABLE \`user_activity_logs\``);
   }
 }

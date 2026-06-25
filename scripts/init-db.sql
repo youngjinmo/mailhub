@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS user_activity_logs (
   activity_type VARCHAR(255) NOT NULL,
   activity_details TEXT NULL,
   created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) NOT NULL,
-  INDEX idx_user_id (user_id),
+  INDEX idx_user_id_created_at (user_id, created_at DESC),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -71,8 +71,8 @@ CREATE TABLE IF NOT EXISTS email_forwarding_logs (
   relay_email_id BIGINT NOT NULL,
   original_sender_hash VARCHAR(255) NOT NULL,
   created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) NOT NULL,
-  INDEX idx_relay_email_id (relay_email_id),
-  INDEX idx_user_id (user_id),
+  INDEX idx_relay_email_id_created_at (relay_email_id, created_at DESC),
+  INDEX idx_user_id_created_at (user_id, created_at DESC),
   FOREIGN KEY (relay_email_id) REFERENCES relay_emails(id) ON DELETE CASCADE,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

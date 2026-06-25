@@ -10,12 +10,12 @@ import {
 import { User } from '../../users/entities/user.entity';
 
 @Entity('user_activity_logs')
+@Index('idx_user_id_created_at', ['userId', 'createdAt'])
 export class UserActivityLog {
   @PrimaryGeneratedColumn({ type: 'bigint' })
   id: bigint;
 
   @Column({ type: 'bigint', name: 'user_id' })
-  @Index('idx_user_id')
   userId: bigint;
 
   @Column({
